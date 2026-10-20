@@ -1,5 +1,7 @@
 # Romburak – Arbeitsanweisungen für Claude
 
+> Projektgedächtnis: `~/Brain/Projekte/Romburak.md` (zu Beginn lesen, am Ende aktualisieren)
+
 ROM-Curator auf Basis der RetroArch-Datenbanken (1G1R, Import, Gamification; v2 Launcher).
 **Was** gebaut wird steht in `SPEC.md`, **wo wir stehen** in `PROGRESS.md`. Diese Datei regelt **wie**.
 
