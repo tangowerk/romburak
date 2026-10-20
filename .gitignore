@@ -4,3 +4,7 @@ dist/
 *.log
 /crates/app/gen/schemas
 .claude/settings.local.json
+/CLAUDE.md
+/SPEC.md
+/PROGRESS.md
+/docs/spec
