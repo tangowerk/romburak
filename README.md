@@ -4,7 +4,7 @@
 
 A ROM manager and launcher built on the RetroArch databases.
 
-[![ci](https://github.com/khaledchaar-cpu/romburak/actions/workflows/ci.yml/badge.svg)](https://github.com/khaledchaar-cpu/romburak/actions/workflows/ci.yml)
+[![ci](https://github.com/tangowerk/romburak/actions/workflows/ci.yml/badge.svg)](https://github.com/tangowerk/romburak/actions/workflows/ci.yml)
 ![platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-0ff)
 ![license](https://img.shields.io/badge/license-MIT-f0f)
 ![built with](https://img.shields.io/badge/built%20with-Rust%20%2B%20Tauri-orange)
@@ -77,7 +77,7 @@ shortcuts for every page. Everything is also available from the `romburak` comma
 ## Install
 
 Download the bundle for your system from the
-[releases page](https://github.com/khaledchaar-cpu/romburak/releases) (AppImage or deb,
+[releases page](https://github.com/tangowerk/romburak/releases) (AppImage or deb,
 dmg, msi or exe). The command line tool is a separate download (`romburak-<os>-<arch>`).
 
 The bundles are not code-signed, so the first start needs a confirmation:
