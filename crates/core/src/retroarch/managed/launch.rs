@@ -16,6 +16,7 @@ impl Target {
     pub fn cores_url(self) -> &'static str {
         match self {
             Self::LinuxX64 => "https://buildbot.libretro.com/nightly/linux/x86_64/latest",
+            Self::LinuxArm64 => "https://buildbot.libretro.com/nightly/linux/aarch64/latest",
             Self::WindowsX64 => "https://buildbot.libretro.com/nightly/windows/x86_64/latest",
             Self::MacUniversal if std::env::consts::ARCH == "aarch64" => {
                 "https://buildbot.libretro.com/nightly/apple/osx/arm64/latest"

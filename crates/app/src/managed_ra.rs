@@ -11,6 +11,8 @@ pub struct ManagedView {
     folder: Option<String>,
     installed: Option<String>,
     pinned: &'static str,
+    /// Only nightly builds exist here (Linux aarch64); no update check against stable.
+    nightly: bool,
     /// Newest stable on the buildbot (only when asked for; `None` offline).
     latest: Option<String>,
 }
@@ -23,7 +25,8 @@ fn managed() -> CmdResult<Managed> {
 pub async fn ra_status(check_latest: bool) -> CmdResult<ManagedView> {
     tauri::async_runtime::spawn_blocking(move || {
         let m = Managed::detect();
-        let latest = check_latest
+        let nightly = m.as_ref().is_some_and(|m| m.target.is_nightly());
+        let latest = (check_latest && !nightly)
             .then(|| romburak_store::http_get(&format!("{}/", managed::STABLE_URL)).ok())
             .flatten()
             .and_then(|html| managed::latest_stable(&String::from_utf8_lossy(&html)));
@@ -32,6 +35,7 @@ pub async fn ra_status(check_latest: bool) -> CmdResult<ManagedView> {
             folder: m.as_ref().map(|m| m.root.display().to_string()),
             installed: m.as_ref().and_then(Managed::current),
             pinned: managed::PINNED,
+            nightly,
             latest,
         })
     })

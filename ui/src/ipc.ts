@@ -809,6 +809,8 @@ export interface ManagedRetroArch {
   folder: string | null;
   installed: string | null;
   pinned: string;
+  /** Only nightly builds exist here (Linux aarch64); no update check against stable. */
+  nightly: boolean;
   latest: string | null;
 }
 
@@ -820,6 +822,7 @@ export async function raStatus(checkLatest: boolean): Promise<ManagedRetroArch> 
       folder: "~/.local/share/romburak/retroarch",
       installed: mockRa,
       pinned: "1.22.2",
+      nightly: false,
       latest: checkLatest ? "1.22.3" : null,
     };
   }

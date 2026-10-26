@@ -125,6 +125,54 @@ fn failed_download_reports_url() {
 }
 
 #[test]
+fn arm64_installs_newest_nightly_with_assets() {
+    let t = tempfile::tempdir().unwrap();
+    let src = t.path().join("src");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join("retroarch"), b"#!/bin/sh\n").unwrap();
+    let archive = t.path().join("RetroArch_update.7z");
+    sevenz_rust2::compress_to_path(&src, &archive).unwrap();
+    let assets = t.path().join("assets.zip");
+    let mut z = zip::ZipWriter::new(std::fs::File::create(&assets).unwrap());
+    z.start_file(
+        "ozone/png/icon.png",
+        zip::write::SimpleFileOptions::default(),
+    )
+    .unwrap();
+    io::Write::write_all(&mut z, b"png").unwrap();
+    z.finish().unwrap();
+
+    let m = Managed {
+        target: Target::LinuxArm64,
+        ..linux(&t.path().join("ra"))
+    };
+    let urls = RefCell::new(Vec::new());
+    let fetch = |url: &str, to: &Path, _: &dyn Fn(u64, Option<u64>)| {
+        urls.borrow_mut().push(url.to_owned());
+        let from = if url.ends_with(".zip") {
+            &assets
+        } else {
+            &archive
+        };
+        std::fs::copy(from, to).map(|_| ())
+    };
+    m.install(PINNED, &fetch, &|_| {}).unwrap();
+    assert_eq!(
+        *urls.borrow(),
+        [
+            "https://buildbot.libretro.com/nightly/linux/aarch64/RetroArch_update.7z",
+            "https://buildbot.libretro.com/assets/frontend/assets.zip",
+        ]
+    );
+    assert!(m.executable().unwrap().is_file());
+    assert!(
+        m.version_dir(PINNED)
+            .join("assets/ozone/png/icon.png")
+            .is_file()
+    );
+}
+
+#[test]
 fn latest_stable_from_listing() {
     let html = r#"<a href="/stable/1.9.0/">1.9.0</a> <a href="/stable/1.22.2/">x</a>
         <a href="/stable/1.22.10/">x</a> <a href="/stable/nightly/">x</a> <a href="/">up</a>"#;

@@ -53,14 +53,20 @@ export default function ManagedRetroArchPanel() {
           <Show when={s().supported} fallback={<p class="dim">No RetroArch build for this platform.</p>}>
             <div class="kpi">{s().installed ?? "not installed"}</div>
             <p class="dim small">
-              Romburak downloads the official stable build (pinned: {s().pinned}, ~200 MB) and keeps cores, saves and
-              states in its own folder. Your ROM folders stay untouched.
+              <Show
+                when={s().nightly}
+                fallback={<>Romburak downloads the official stable build (pinned: {s().pinned}, ~200 MB)</>}
+              >
+                There is no stable build for this platform: Romburak downloads the newest nightly plus the menu assets
+                (~80 MB). It needs SDL2 and the usual desktop libraries from the system
+              </Show>{" "}
+              and keeps cores, saves and states in its own folder. Your ROM folders stay untouched.
             </p>
             <p class="dim mono small">{s().folder}</p>
             <div class="row">
               <Show when={!s().installed}>
                 <button class="btn" disabled={busy()} onClick={() => void install(null)}>
-                  Install RetroArch {s().pinned}
+                  Install RetroArch {s().nightly ? "nightly" : s().pinned}
                 </button>
               </Show>
               <Show when={newer()}>
@@ -70,13 +76,15 @@ export default function ManagedRetroArchPanel() {
                   </button>
                 )}
               </Show>
-              <button
-                class="btn ghost"
-                disabled={busy() || status.loading}
-                onClick={() => (check() ? void refetch() : setCheck(true))}
-              >
-                Check for updates
-              </button>
+              <Show when={!s().nightly}>
+                <button
+                  class="btn ghost"
+                  disabled={busy() || status.loading}
+                  onClick={() => (check() ? void refetch() : setCheck(true))}
+                >
+                  Check for updates
+                </button>
+              </Show>
             </div>
             <div class="row">
               <span class="dim small">Games start in</span>

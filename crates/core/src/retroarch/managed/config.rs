@@ -33,7 +33,7 @@ impl Managed {
         if self.database_dir().is_dir() {
             keys.push(("content_database_path", dir(&self.database_dir())));
         }
-        if self.target == super::Target::LinuxX64 {
+        if self.target.is_linux() {
             // the default `gl` driver cannot run slang shaders (also when switched live)
             keys.push(("video_driver", "glcore".into()));
         }

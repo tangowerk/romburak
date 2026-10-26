@@ -1,5 +1,5 @@
 //! The RetroArch romburak downloads and runs itself: official stable builds from the
-//! libretro buildbot, unpacked into `<data dir>/romburak/retroarch/versions/<version>/`.
+//! libretro buildbot (Linux aarch64 has none: the newest nightly there), unpacked into `<data dir>/romburak/retroarch/versions/<version>/`.
 //! Download → verify → unpack into a temp folder → atomic rename → `current` marker.
 //! Cores, saves, states and the config live next to the versions, so updates keep them.
 
@@ -18,6 +18,8 @@ pub const PINNED: &str = "1.22.2";
 
 /// Buildbot root of the stable builds.
 pub const STABLE_URL: &str = "https://buildbot.libretro.com/stable";
+/// Buildbot root of the nightly builds.
+pub const NIGHTLY_URL: &str = "https://buildbot.libretro.com/nightly";
 /// Frontend packages (`shaders_slang.zip`, `autoconfig.zip`).
 pub const FRONTEND_ASSETS_URL: &str = "https://buildbot.libretro.com/assets/frontend";
 
@@ -43,6 +45,8 @@ pub type FetchFile<'a> = &'a dyn Fn(&str, &Path, &dyn Fn(u64, Option<u64>)) -> i
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Target {
     LinuxX64,
+    /// Nightly only: the bare `retroarch` binary, without menu assets.
+    LinuxArm64,
     WindowsX64,
     MacUniversal,
 }
@@ -52,6 +56,7 @@ impl Target {
     pub fn current() -> Option<Self> {
         match (std::env::consts::OS, std::env::consts::ARCH) {
             ("linux", "x86_64") => Some(Self::LinuxX64),
+            ("linux", "aarch64") => Some(Self::LinuxArm64),
             ("windows", "x86_64") => Some(Self::WindowsX64),
             ("macos", _) => Some(Self::MacUniversal),
             _ => None,
@@ -61,6 +66,8 @@ impl Target {
     fn remote(self) -> &'static str {
         match self {
             Self::LinuxX64 => "linux/x86_64/RetroArch.7z",
+            // the dated nightlies are deleted after two weeks, this one keeps its name
+            Self::LinuxArm64 => "linux/aarch64/RetroArch_update.7z",
             Self::WindowsX64 => "windows/x86_64/RetroArch.7z",
             Self::MacUniversal => "apple/osx/universal/RetroArch_Metal.dmg",
         }
@@ -70,25 +77,41 @@ impl Target {
     pub fn executable(self) -> &'static str {
         match self {
             Self::LinuxX64 => "RetroArch-Linux-x86_64/RetroArch-Linux-x86_64.AppImage",
+            Self::LinuxArm64 => "retroarch",
             Self::WindowsX64 => "RetroArch-Win64/retroarch.exe",
             Self::MacUniversal => "RetroArch.app/Contents/MacOS/RetroArch",
         }
     }
 
     /// Bundled assets folder (menu icons, fonts) relative to the version folder; the macOS
-    /// app finds its own.
+    /// app finds its own, Linux aarch64 gets the buildbot package unpacked there.
     pub fn assets(self) -> Option<&'static str> {
         match self {
             Self::LinuxX64 => Some(
                 "RetroArch-Linux-x86_64/RetroArch-Linux-x86_64.AppImage.home/.config/retroarch/assets",
             ),
+            Self::LinuxArm64 => Some("assets"),
             Self::WindowsX64 => Some("RetroArch-Win64/assets"),
             Self::MacUniversal => None,
         }
     }
 
+    /// Archive of `version`; on Linux aarch64 the newest nightly, whatever `version` says.
     pub fn url(self, version: &str) -> String {
-        format!("{STABLE_URL}/{version}/{}", self.remote())
+        match self {
+            Self::LinuxArm64 => format!("{NIGHTLY_URL}/{}", self.remote()),
+            _ => format!("{STABLE_URL}/{version}/{}", self.remote()),
+        }
+    }
+
+    /// Only nightly builds exist; stable version numbers do not apply.
+    pub fn is_nightly(self) -> bool {
+        self == Self::LinuxArm64
+    }
+
+    /// Linux build: `glcore` video driver and the system's libraries.
+    pub fn is_linux(self) -> bool {
+        matches!(self, Self::LinuxX64 | Self::LinuxArm64)
     }
 
     fn sha256(self, version: &str) -> Option<&'static str> {
@@ -192,6 +215,9 @@ impl Managed {
             unpack::unpack(self.target, &archive, &tmp, &|done, total| {
                 progress(Phase::Unpack { done, total })
             })?;
+            if self.target == Target::LinuxArm64 {
+                self.fetch_assets(&dl, &tmp, fetch, progress)?;
+            }
             let exe = tmp.join(self.target.executable());
             if !exe.is_file() {
                 let _ = std::fs::remove_dir_all(&tmp);
@@ -212,6 +238,29 @@ impl Managed {
         self.prune(version);
         progress(Phase::Done);
         Ok(())
+    }
+
+    /// Menu assets for a build that ships none, unpacked into `version_tmp`.
+    fn fetch_assets(
+        &self,
+        dl: &Path,
+        version_tmp: &Path,
+        fetch: FetchFile,
+        progress: &dyn Fn(Phase),
+    ) -> io::Result<()> {
+        let Some(sub) = self.target.assets() else {
+            return Ok(());
+        };
+        let zip = dl.join("assets.zip");
+        let url = format!("{FRONTEND_ASSETS_URL}/assets.zip");
+        fetch(&url, &zip, &|done, total| {
+            progress(Phase::Download { done, total })
+        })
+        .map_err(|e| io::Error::other(format!("{url}: {e}")))?;
+        progress(Phase::Unpack { done: 0, total: 0 });
+        zip::ZipArchive::new(std::fs::File::open(&zip)?)
+            .and_then(|mut z| z.extract(version_tmp.join(sub)))
+            .map_err(|e| io::Error::other(format!("{url}: {e}")))
     }
 
     /// Removes every installed version except `keep`.

@@ -40,7 +40,7 @@
     "longDescription": "Verify, deduplicate (1G1R) and import ROM collections against the RetroArch databases.",
     "linux": {
       "deb": {
-        "depends": []
+        "depends": ["libsdl2-2.0-0"]
       }
     }
   }
