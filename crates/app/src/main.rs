@@ -18,6 +18,8 @@ mod states;
 mod thumbs;
 
 fn main() {
+    #[cfg(target_os = "linux")]
+    webkit_workarounds();
     if let Err(e) = romburak_core::paths::legacy::migrate() {
         eprintln!("warning: moving data from the old app name failed: {e}");
     }
@@ -90,4 +92,16 @@ fn main() {
             eprintln!("romburak: {e}");
             std::process::exit(1);
         });
+}
+
+/// WebKitGTK's DMA-BUF renderer leaves the window black on NVIDIA (GBM buffers fail with
+/// "Permission denied"); the plain renderer works everywhere. An explicit setting wins.
+#[cfg(target_os = "linux")]
+#[allow(unsafe_code)]
+fn webkit_workarounds() {
+    const VAR: &str = "WEBKIT_DISABLE_DMABUF_RENDERER";
+    if std::env::var_os(VAR).is_none() {
+        // SAFETY: first thing in `main`, before any other thread exists.
+        unsafe { std::env::set_var(VAR, "1") };
+    }
 }
