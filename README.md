@@ -50,7 +50,7 @@ RetroArch installation it downloads and manages on its own.
 - **Statistics.** Play time per game and system, history by day or month, achievement
   progress.
 
-The app has a neon theme and a pin-up theme, a command palette (`Ctrl K`) and keyboard
+The app has a neon theme, a pin-up theme and an Omarchy theme (Matte Black), a command palette (`Ctrl K`) and keyboard
 shortcuts for every page. Everything is also available from the `romburak` command line.
 
 <table>
@@ -88,7 +88,9 @@ The bundles are not code-signed, so the first start needs a confirmation:
 - **Linux:** make the AppImage executable (`chmod +x`); the deb installs normally.
 
 The managed RetroArch is tested on Linux. Windows and macOS builds exist but have not been
-tested end to end yet.
+tested end to end yet. On Linux aarch64 (no release bundle yet, build from source) there is
+no stable RetroArch build: Romburak installs the newest nightly, which needs SDL2 from the
+system (`libsdl2-2.0-0`).
 
 ## First run
 
