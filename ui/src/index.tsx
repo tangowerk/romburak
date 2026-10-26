@@ -3,6 +3,7 @@ import "@fontsource/orbitron/600.css";
 import "@fontsource/rajdhani/500.css";
 import "@fontsource/rajdhani/600.css";
 import "@fontsource/jetbrains-mono/400.css";
+import "@fontsource/jetbrains-mono/600.css";
 import "@fontsource/lobster/400.css";
 import "@fontsource/bebas-neue/400.css";
 import "@fontsource/josefin-sans/400.css";
@@ -13,6 +14,7 @@ import "./styles/layout.css";
 import "./styles/views.css";
 import "./styles/settings.css";
 import "./styles/pinup.css";
+import "./styles/omarchy.css";
 import App from "./App";
 
 const root = document.getElementById("root");

@@ -117,6 +117,42 @@
   color-scheme: light;
 }
 
+/* Omarchy: its Matte Black palette (themes/matte-black/colors.toml), monospace everywhere,
+   flat tiles with a Hyprland-style border; no neon, no CRT. */
+:root[data-theme="omarchy"] {
+  --bg: #121212;
+  --bg-raised: #1e1e1e;
+  --bg-sunken: #0d0d0d;
+  --line: #2a2a2a;
+  --line-strong: #333333;
+  --text: #bebebe;
+  --text-dim: #8a8a8d;
+
+  --cyan: #eaeaea;
+  --magenta: #d35f5f;
+  --yellow: #ffc107;
+  --ok: #ffc107;
+  --err: #d35f5f;
+  --accent: #e68e0d;
+
+  --font-head: "JetBrains Mono", ui-monospace, monospace;
+  --font-ui: "JetBrains Mono", ui-monospace, monospace;
+
+  --fs-md: 0.9rem;
+  --border: 2px;
+
+  --glow: none;
+  --grid-line: transparent;
+  --glow-cyan: transparent;
+  --glow-magenta: transparent;
+  --bg-fx-opacity: 0;
+  --edge: var(--accent);
+  --chroma: none;
+  --scanlines: 0;
+  --view-in: omarchy-in 140ms ease-out;
+  color-scheme: dark;
+}
+
 /* after the theme blocks so it wins over their effect tokens */
 :root[data-effects="off"] {
   --glow: none;

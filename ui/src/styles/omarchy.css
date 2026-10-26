@@ -1,0 +1,86 @@
+/* Omarchy theme: shapes only (colors and fonts come from tokens.css).
+   Tiling-desktop look: square tiles, 2px borders that light up in the accent like a
+   focused Hyprland window, lowercase mono labels, Waybar-style workspace numbers. */
+:root[data-theme="omarchy"] body { font-weight: 400; }
+:root[data-theme="omarchy"] h1,
+:root[data-theme="omarchy"] h2,
+:root[data-theme="omarchy"] h3 { letter-spacing: 0; }
+
+:root[data-theme="omarchy"] .logo,
+:root[data-theme="omarchy"] .logo-short {
+  font-size: var(--fs-md);
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  color: var(--text);
+}
+:root[data-theme="omarchy"] .logo::before,
+:root[data-theme="omarchy"] .logo::after { display: none; }
+
+:root[data-theme="omarchy"] .sidebar {
+  background: var(--bg-sunken);
+  border-image: none;
+  border-right: 1px solid var(--line);
+}
+:root[data-theme="omarchy"] .nav-item {
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: lowercase;
+  border-left: 0;
+}
+:root[data-theme="omarchy"] .nav-item:hover { background: var(--line); }
+:root[data-theme="omarchy"] .nav-item.active { color: var(--bg); background: var(--accent); }
+:root[data-theme="omarchy"] .nav-item.active .nav-icon { filter: none; }
+:root[data-theme="omarchy"] .nav-key { color: var(--text-dim); opacity: 1; }
+:root[data-theme="omarchy"] .nav-item.active .nav-key { color: var(--bg); }
+
+:root[data-theme="omarchy"] .topbar { background: var(--bg-sunken); border-image: none; border-bottom: 1px solid var(--line); }
+:root[data-theme="omarchy"] .view-title { letter-spacing: 0; text-transform: lowercase; font-weight: 600; }
+:root[data-theme="omarchy"] .view-title::before { content: "❯ "; color: var(--ok); }
+:root[data-theme="omarchy"] .palette-trigger { clip-path: none; }
+:root[data-theme="omarchy"] .palette-trigger .dim::before { content: ""; }
+
+:root[data-theme="omarchy"] .panel {
+  clip-path: none;
+  background: var(--bg-raised);
+  background-image: none;
+  border: var(--border) solid var(--line-strong);
+  box-shadow: none;
+  transition: border-color var(--dur);
+}
+:root[data-theme="omarchy"] .panel::before,
+:root[data-theme="omarchy"] .panel::after { display: none; }
+:root[data-theme="omarchy"] .panel:hover,
+:root[data-theme="omarchy"] .panel:focus-within { border-color: var(--accent); }
+:root[data-theme="omarchy"] .panel-title { letter-spacing: 0; text-transform: lowercase; color: var(--cyan); }
+:root[data-theme="omarchy"] .panel-title::before { content: "# "; color: var(--text-dim); }
+:root[data-theme="omarchy"] .panel-title::after { display: none; }
+
+:root[data-theme="omarchy"] .btn { clip-path: none; letter-spacing: 0; text-transform: lowercase; font-weight: 600; }
+:root[data-theme="omarchy"] .btn.ghost { color: var(--text); }
+:root[data-theme="omarchy"] .btn.ghost.active { color: var(--bg); background: var(--accent); box-shadow: none; }
+:root[data-theme="omarchy"] .field { border-width: var(--border); }
+:root[data-theme="omarchy"] .field:focus { border-color: var(--accent); outline: none; }
+
+:root[data-theme="omarchy"] .kpi { font-weight: 600; }
+:root[data-theme="omarchy"] .segments i { transform: none; }
+:root[data-theme="omarchy"] .segments i.on:last-of-type,
+:root[data-theme="omarchy"] .segments i.on:has(+ i:not(.on)) { background: var(--magenta); box-shadow: none; }
+
+:root[data-theme="omarchy"] .steps li { clip-path: none; letter-spacing: 0; text-transform: lowercase; border: 1px solid var(--line-strong); }
+:root[data-theme="omarchy"] .steps li.active { box-shadow: none; }
+
+:root[data-theme="omarchy"] .xsel { clip-path: none; }
+:root[data-theme="omarchy"] .xsel.open { border-color: var(--accent); box-shadow: none; }
+:root[data-theme="omarchy"] .settings-tab { letter-spacing: 0; text-transform: lowercase; }
+
+:root[data-theme="omarchy"] .win-controls button { clip-path: none; box-shadow: none; background: transparent; }
+:root[data-theme="omarchy"] .win-controls .close:hover { background: var(--err); }
+
+/* mako-style notification */
+:root[data-theme="omarchy"] .toast { clip-path: none; border: var(--border) solid var(--accent); box-shadow: none; }
+:root[data-theme="omarchy"] .toast strong { color: var(--accent); }
+
+@keyframes omarchy-in {
+  from { opacity: 0; }
+}

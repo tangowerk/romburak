@@ -1,12 +1,13 @@
 // Per-device appearance preferences (theme, effects), persisted in localStorage.
 import { createSignal } from "solid-js";
 
-export type Theme = "dark" | "light" | "pinup";
+export type Theme = "dark" | "light" | "pinup" | "omarchy";
 
 export const THEMES: { id: Theme; label: string }[] = [
   { id: "dark", label: "Neon" },
   { id: "light", label: "Neon light" },
   { id: "pinup", label: "Pin-up '40s" },
+  { id: "omarchy", label: "Omarchy" },
 ];
 
 function load(key: string): string | null {
