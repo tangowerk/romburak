@@ -1,0 +1,40 @@
+# Local Arch package for Romburak, built from the committed HEAD of this repo.
+# Install or update with: cd packaging/arch && makepkg -fsi
+pkgname=romburak
+pkgver=0.11.0.r18.gc257a52
+pkgrel=1
+pkgdesc="ROM manager and launcher built on the RetroArch databases"
+arch=('x86_64' 'aarch64')
+url="https://github.com/tangowerk/romburak"
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3' 'sdl2')
+makedepends=('git' 'cargo' 'nodejs' 'pnpm')
+# Arch's C LTO flags break bundled SQLite in the Rust build; Cargo sets its own LTO.
+options=('!lto' '!debug')
+source=("$pkgname::git+file://$(realpath "$startdir/../..")"
+        "romburak.desktop")
+sha256sums=('SKIP' 'SKIP')
+
+pkgver() {
+  cd "$pkgname"
+  git describe --tags --long | sed 's/^v//;s/-\([0-9]*\)-g/.r\1.g/'
+}
+
+build() {
+  cd "$pkgname"
+  export CARGO_TARGET_DIR="$srcdir/target"
+  (cd ui && pnpm install --frozen-lockfile && pnpm tauri build --no-bundle)
+  cargo build --release --locked -p romburak-cli
+}
+
+package() {
+  cd "$pkgname"
+  install -Dm755 "$srcdir/target/release/romburak-app" "$pkgdir/usr/bin/romburak-app"
+  install -Dm755 "$srcdir/target/release/romburak" "$pkgdir/usr/bin/romburak"
+  install -Dm644 "$srcdir/romburak.desktop" "$pkgdir/usr/share/applications/romburak.desktop"
+  install -Dm644 crates/app/icons/32x32.png "$pkgdir/usr/share/icons/hicolor/32x32/apps/romburak.png"
+  install -Dm644 crates/app/icons/128x128.png "$pkgdir/usr/share/icons/hicolor/128x128/apps/romburak.png"
+  install -Dm644 crates/app/icons/128x128@2x.png "$pkgdir/usr/share/icons/hicolor/256x256/apps/romburak.png"
+  install -Dm644 crates/app/icons/icon.png "$pkgdir/usr/share/icons/hicolor/512x512/apps/romburak.png"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

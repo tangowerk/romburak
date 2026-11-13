@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Romburak
+GenericName=ROM Manager
+Comment=ROM manager and launcher built on the RetroArch databases
+Comment[de]=ROM-Verwaltung und Launcher auf Basis der RetroArch-Datenbanken
+Exec=romburak-app
+Icon=romburak
+Terminal=false
+Categories=Game;Emulator;Utility;
+StartupWMClass=romburak-app

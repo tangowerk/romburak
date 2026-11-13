@@ -8,3 +8,7 @@ dist/
 /SPEC.md
 /PROGRESS.md
 /docs/spec
+/packaging/arch/src/
+/packaging/arch/pkg/
+/packaging/arch/*.pkg.tar.*
+/packaging/arch/romburak/
