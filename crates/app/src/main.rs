@@ -95,13 +95,21 @@ fn main() {
 }
 
 /// WebKitGTK's DMA-BUF renderer leaves the window black on NVIDIA (GBM buffers fail with
-/// "Permission denied"); the plain renderer works everywhere. An explicit setting wins.
+/// "Permission denied"). The fallback renderer copies every frame through the CPU and makes
+/// the UI sluggish, so it is only used when the NVIDIA driver is loaded. An explicit setting
+/// wins.
 #[cfg(target_os = "linux")]
 #[allow(unsafe_code)]
 fn webkit_workarounds() {
     const VAR: &str = "WEBKIT_DISABLE_DMABUF_RENDERER";
-    if std::env::var_os(VAR).is_none() {
+    if std::env::var_os(VAR).is_none() && nvidia_driver_loaded() {
         // SAFETY: first thing in `main`, before any other thread exists.
         unsafe { std::env::set_var(VAR, "1") };
     }
+}
+
+/// The proprietary and the open NVIDIA kernel modules both register as `nvidia`.
+#[cfg(target_os = "linux")]
+fn nvidia_driver_loaded() -> bool {
+    std::path::Path::new("/sys/module/nvidia").exists()
 }
