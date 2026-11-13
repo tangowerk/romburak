@@ -43,7 +43,8 @@ export default function ManagedRetroArchPanel() {
   };
   const newer = () => {
     const s = status();
-    return s?.latest && s.latest !== s.installed ? s.latest : null;
+    // Without an installation there is nothing to update; the install button covers that case.
+    return s?.installed && s.latest && s.latest !== s.installed ? s.latest : null;
   };
 
   return (
@@ -76,7 +77,7 @@ export default function ManagedRetroArchPanel() {
                   </button>
                 )}
               </Show>
-              <Show when={!s().nightly}>
+              <Show when={!s().nightly && s().installed}>
                 <button
                   class="btn ghost"
                   disabled={busy() || status.loading}
