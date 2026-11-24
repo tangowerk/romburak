@@ -79,6 +79,16 @@ export default function ManagedRetroArchPanel() {
                 <button class="btn" disabled={busy()} onClick={() => void install(null)}>
                   Install RetroArch {s().nightly ? "nightly" : s().pinned}
                 </button>
+                <Show when={!s().nightly}>
+                  <button
+                    class="btn ghost"
+                    disabled={busy()}
+                    title="Newest development build: more recent fixes, but untested. Cores are always the newest anyway."
+                    onClick={() => void install("nightly")}
+                  >
+                    Install nightly
+                  </button>
+                </Show>
               </Show>
               <Show when={newer()}>
                 {(v) => (
