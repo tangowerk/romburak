@@ -1,15 +1,18 @@
 import { createResource, createSignal, Show } from "solid-js";
 import Panel from "./Panel";
-import { cheevosLogin, cheevosLogout, cheevosSetHardcore, cheevosStatus } from "../ipc";
+import { cheevosLogin, cheevosLogout, cheevosOpenSettings, cheevosSetKey, cheevosStatus } from "../ipc";
 import { refreshProgress } from "../state/libraryStore";
 
-/** RetroAchievements login for RetroArch (unlocks while playing) and hardcore mode. */
-export default function CheevosAccountPanel() {
-  const [status, { refetch, mutate }] = createResource(cheevosStatus);
+/** RetroAchievements access, both in one place: the login (RetroArch unlocks while playing)
+ *  and the Web API key (everything Romburak shows about achievements). */
+export default function CheevosAccountPanel(props: { onChange: () => void }) {
+  const [status, { refetch }] = createResource(cheevosStatus);
   const [user, setUser] = createSignal("");
   const [password, setPassword] = createSignal("");
+  const [key, setKey] = createSignal("");
   const [busy, setBusy] = createSignal(false);
   const [msg, setMsg] = createSignal("");
+  const changed = () => (void refetch(), props.onChange(), void refreshProgress());
 
   const login = async () => {
     setBusy(true);
@@ -17,8 +20,7 @@ export default function CheevosAccountPanel() {
     try {
       await cheevosLogin(user().trim(), password());
       setUser("");
-      void refetch();
-      void refreshProgress();
+      changed();
     } catch (e) {
       setMsg(String(e));
     } finally {
@@ -28,30 +30,22 @@ export default function CheevosAccountPanel() {
   };
   const logout = async () => {
     await cheevosLogout();
-    void refetch();
-    void refreshProgress();
+    changed();
   };
-  const hardcore = async (on: boolean) => {
-    const s = status();
-    if (s) mutate({ ...s, hardcore: on });
-    try {
-      await cheevosSetHardcore(on);
-    } catch (e) {
-      setMsg(String(e));
-      void refetch();
-    }
+  const saveKey = async () => {
+    await cheevosSetKey(key());
+    setKey("");
+    changed();
   };
 
   return (
-    <Panel title="RetroAchievements">
+    <Panel title="Account">
+      <h4 class="step">1 · Login <span class="dim small">for RetroArch: unlocks while you play</span></h4>
       <Show
         when={status()?.user}
         fallback={
           <>
-            <p class="dim small">
-              Log in so RetroArch unlocks achievements while you play. Your password is sent once to
-              retroachievements.org; only the login token is kept.
-            </p>
+            <p class="dim small">Your password is sent once to retroachievements.org; only the login token is kept.</p>
             <form
               class="row"
               onSubmit={(e) => {
@@ -90,16 +84,34 @@ export default function CheevosAccountPanel() {
           </button>
         </div>
       </Show>
-      <label class="check">
+      <h4 class="step">2 · Web API key <span class="dim small">for Romburak: which games have achievements, your progress</span></h4>
+      <p class="dim small">
+        Copy it from{" "}
+        <button class="link" onClick={() => void cheevosOpenSettings()}>
+          retroachievements.org → Settings → Authentication
+        </button>
+        {status()?.has_key ? " · a key is stored" : ""}.
+      </p>
+      <form
+        class="row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void saveKey();
+        }}
+      >
         <input
-          type="checkbox"
-          checked={status()?.hardcore ?? false}
-          onChange={(e) => void hardcore(e.currentTarget.checked)}
+          class="field"
+          type="password"
+          placeholder={status()?.has_key ? "Replace Web API key" : "Web API key"}
+          value={key()}
+          onInput={(e) => setKey(e.currentTarget.value)}
         />
-        Hardcore mode – no savestates, rewind or cheats; unlocks count as hardcore on the site
-      </label>
+        <button class="btn" classList={{ ghost: !!status()?.has_key }} type="submit" disabled={!key().trim()}>
+          Save key
+        </button>
+      </form>
       <Show when={msg()}>
-        <p class="dim small">{msg()}</p>
+        <p class="err small">{msg()}</p>
       </Show>
     </Panel>
   );

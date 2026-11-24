@@ -86,6 +86,7 @@ impl Store {
         Ok(Some(Cheevos {
             login: self.ra_account()?,
             hardcore: self.ra_hardcore()?,
+            options: self.ra_chosen_options()?,
         }))
     }
 

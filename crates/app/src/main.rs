@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod cheevos;
+mod cheevos_live;
 mod commands;
 mod decide;
 mod exceptions;
@@ -58,6 +59,10 @@ fn main() {
             thumbs::thumbs_online_get,
             thumbs::thumbs_online_set,
             cheevos::cheevos_status,
+            cheevos_live::cheevos_live,
+            cheevos_live::cheevos_options,
+            cheevos_live::cheevos_set_option,
+            cheevos_live::cheevos_open_settings,
             cheevos::cheevos_set_key,
             cheevos::cheevos_login,
             cheevos::cheevos_logout,

@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Emitter};
 
 /// Setting holding the user's Web API key (shared with the CLI).
-const KEY: &str = "ra.api_key";
+pub(crate) const KEY: &str = "ra.api_key";
 
 #[derive(Serialize)]
 pub struct Status {

@@ -1,5 +1,5 @@
 import { createResource, For, Match, Switch } from "solid-js";
-import CheevosPanel from "../components/CheevosPanel";
+import AchievementsSettings from "./AchievementsSettings";
 import DatabasePanel from "../components/DatabasePanel";
 import { OpenDecisionsPanel, TrashPanel } from "./DashboardQueue";
 import DirField from "../components/DirField";
@@ -74,7 +74,7 @@ function Appearance() {
   );
 }
 
-/** Maintenance and preferences: library folder, game databases, appearance. */
+/** Maintenance and preferences: library folder, game databases, achievements, appearance. */
 export default function System(props: { onReview: () => void }) {
   return (
     <div class="settings-shell">
@@ -100,8 +100,10 @@ export default function System(props: { onReview: () => void }) {
           <Match when={systemSection() === "databases"}>
             <div class="settings">
               <DatabasePanel />
-              <CheevosPanel />
             </div>
+          </Match>
+          <Match when={systemSection() === "achievements"}>
+            <AchievementsSettings />
           </Match>
           <Match when={systemSection() === "appearance"}>
             <Appearance />

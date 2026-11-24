@@ -1,10 +1,9 @@
-import CheevosAccountPanel from "../components/CheevosAccountPanel";
 import CorePicker from "../components/CorePicker";
 import ManagedRetroArchPanel from "../components/ManagedRetroArchPanel";
 import Panel from "../components/Panel";
 import PicturePanel from "../components/PicturePanel";
 
-/** Everything RetroArch: the managed RetroArch, achievement login and the core per system. */
+/** Everything RetroArch: the managed RetroArch, picture and the core per system (achievements: Settings). */
 export default function RetroArch() {
   return (
     <div class="grid">
@@ -12,9 +11,6 @@ export default function RetroArch() {
         <ManagedRetroArchPanel />
       </div>
       <PicturePanel />
-      <div class="wide">
-        <CheevosAccountPanel />
-      </div>
       <Panel title="Cores per system" class="wide">
         <CorePicker />
       </Panel>

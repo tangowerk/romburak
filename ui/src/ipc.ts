@@ -1053,6 +1053,112 @@ export async function cheevosStatus(): Promise<CheevosStatus> {
   return invoke<CheevosStatus>("cheevos_status");
 }
 
+/** One connection light: data when it works, else the error. */
+export interface RaCheck<T> { ok: T | null; error: string | null }
+
+export interface RaLogin { user: string; avatar_url: string; score: number; softcore_score: number }
+
+export interface RaUnlock {
+  game: number;
+  game_title: string;
+  title: string;
+  points: number;
+  badge: string;
+  /** RA date text (UTC) */
+  date: string;
+  hardcore: boolean;
+}
+
+export interface RaSummary {
+  user: string;
+  avatar: string;
+  points: number;
+  softcore_points: number;
+  rank: number | null;
+  total_ranked: number | null;
+  member_since: string;
+  rich_presence: string;
+  recent: RaUnlock[];
+}
+
+export interface RaCounts { consoles: number; games: number; files: number; files_with: number }
+
+export interface CheevosLive {
+  /** null = not logged in */
+  login: RaCheck<RaLogin> | null;
+  /** null = no Web API key (or not logged in, so no user to ask for) */
+  key: RaCheck<RaSummary> | null;
+  /** unix seconds of the last check where login and key both worked */
+  last_ok: number | null;
+  counts: RaCounts;
+}
+
+/** Asks RetroAchievements now whether login token and Web API key work (profile, rank, recent unlocks). */
+export async function cheevosLive(): Promise<CheevosLive> {
+  if (!inTauri) {
+    await new Promise((r) => setTimeout(r, 400));
+    const counts = { consoles: 41, games: 7737, files: 9083, files_with: 2685 };
+    if (!mockRaUser) return { login: null, key: null, last_ok: null, counts };
+    const badge = (n: number) => `https://media.retroachievements.org/Badge/${n}.png`;
+    return {
+      login: { ok: { user: mockRaUser, avatar_url: "", score: 1240, softcore_score: 85 }, error: null },
+      key: {
+        ok: {
+          user: mockRaUser,
+          avatar: "",
+          points: 1240,
+          softcore_points: 85,
+          rank: 18342,
+          total_ranked: 98211,
+          member_since: "2021-12-20 03:13:20",
+          rich_presence: "Stage 3 | 2 lives",
+          recent: [
+            { game: 1, game_title: "Metal Slug 4", title: "Rescue Mission", points: 10, badge: badge(325551), date: "2026-11-23 20:15:00", hardcore: true },
+            { game: 1, game_title: "Metal Slug 4", title: "First Blood", points: 5, badge: badge(325552), date: "2026-11-23 19:58:12", hardcore: true },
+            { game: 2, game_title: "Dr. Mario 64", title: "Virus Buster", points: 3, badge: badge(325553), date: "2026-11-20 18:01:44", hardcore: false },
+          ],
+        },
+        error: null,
+      },
+      last_ok: Date.now() / 1000,
+      counts,
+    };
+  }
+  return invoke<CheevosLive>("cheevos_live");
+}
+
+/** Opens retroachievements.org → Settings (Web API key) in the browser. */
+export async function cheevosOpenSettings(): Promise<void> {
+  if (!inTauri) {
+    window.open("https://retroachievements.org/settings", "_blank");
+    return;
+  }
+  return invoke<void>("cheevos_open_settings");
+}
+
+/** RetroArch's in-game achievement option; `chosen` = false means RetroArch's default is used. */
+export interface CheevosOption { id: string; on: boolean; chosen: boolean }
+
+const mockOptions: CheevosOption[] = [
+  ["unlock_popup", true], ["unlock_sound", false], ["unlock_screenshot", false], ["leaderboards", true],
+  ["challenge_indicators", true], ["menu_badges", false], ["encore", false],
+].map(([id, on]) => ({ id: id as string, on: on as boolean, chosen: false }));
+
+export async function cheevosOptions(): Promise<CheevosOption[]> {
+  if (!inTauri) return mockOptions.map((o) => ({ ...o }));
+  return invoke<CheevosOption[]>("cheevos_options");
+}
+
+/** Saves an option into the managed RetroArch config (applies at the next game start). */
+export async function cheevosSetOption(id: string, on: boolean): Promise<void> {
+  if (!inTauri) {
+    const o = mockOptions.find((x) => x.id === id);
+    if (o) Object.assign(o, { on, chosen: true });
+    return;
+  }
+  return invoke<void>("cheevos_set_option", { id, on });
+}
+
 let mockRaUser: string | null = null;
 let mockHardcore = false;
 

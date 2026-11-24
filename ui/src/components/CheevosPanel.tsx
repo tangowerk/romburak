@@ -1,22 +1,19 @@
 import { createResource, createSignal, Show } from "solid-js";
 import Panel from "./Panel";
 import PhaseProgress from "./PhaseProgress";
-import { cheevosSetKey, cheevosStatus, cheevosSync } from "../ipc";
+import { cheevosStatus, cheevosSync, type RaCounts } from "../ipc";
 import { refreshLibrary } from "../state/libraryStore";
 import { cancelPlayers, playersError, playersProgress, refreshPlayers } from "../state/popularity";
 import Segments from "./Segments";
 
-/** RetroAchievements: Web API key and game lists, so the library shows which games have achievements. */
-export default function CheevosPanel() {
+/** Library match: RA game lists + hashing the library, so it shows which games have achievements. */
+export default function CheevosPanel(props: { counts: RaCounts | undefined; onChange: () => void }) {
   const [status, { refetch }] = createResource(cheevosStatus);
-  const [key, setKey] = createSignal("");
   const [busy, setBusy] = createSignal(false);
   const [msg, setMsg] = createSignal("");
-
-  const saveKey = async () => {
-    await cheevosSetKey(key());
-    setKey("");
-    void refetch();
+  const pct = () => {
+    const c = props.counts;
+    return c && c.files ? Math.round((100 * c.files_with) / c.files) : 0;
   };
   const sync = async () => {
     setBusy(true);
@@ -25,6 +22,7 @@ export default function CheevosPanel() {
       const n = await cheevosSync();
       setMsg(`${n} library games have achievements`);
       void refetch();
+      props.onChange();
       void refreshLibrary().then(refreshPlayers);
     } catch (e) {
       setMsg(String(e));
@@ -38,28 +36,30 @@ export default function CheevosPanel() {
   };
 
   return (
-    <Panel title="RetroAchievements">
+    <Panel title="Library match">
       <p class="dim small">
-        Shows which library games have achievements. Needs your Web API key from retroachievements.org → Settings → Keys
-        {status()?.has_key ? " (stored)" : ""}.
+        Downloads RetroAchievements' game lists and hashes your library the way RetroArch does, so the library
+        shows which games have achievements.
       </p>
-      <div class="row">
-        <input
-          class="field"
-          type="password"
-          placeholder={status()?.has_key ? "Replace Web API key" : "Web API key"}
-          value={key()}
-          onInput={(e) => setKey(e.currentTarget.value)}
-        />
-        <button class="btn ghost" disabled={!key().trim()} onClick={() => void saveKey()}>
-          Save key
-        </button>
-      </div>
+      <Show when={props.counts?.games}>
+        <dl class="facts">
+          <dt>At RetroAchievements</dt>
+          <dd>{props.counts!.games.toLocaleString()} games on {props.counts!.consoles} consoles</dd>
+          <dt>Your library</dt>
+          <dd>
+            {props.counts!.files_with.toLocaleString()} of {props.counts!.files.toLocaleString()} files have
+            achievements ({pct()} %)
+          </dd>
+        </dl>
+      </Show>
       <div class="row">
         <button class="btn" disabled={busy() || !status()?.has_key} onClick={() => void sync()}>
           Sync achievements
         </button>
         <span class="dim small">last sync: {synced()}</span>
+        <Show when={!status()?.has_key}>
+          <span class="dim small">· needs the Web API key</span>
+        </Show>
       </div>
       <Show when={busy()} fallback={<Show when={msg()}><p class="dim small">{msg()}</p></Show>}>
         <PhaseProgress
