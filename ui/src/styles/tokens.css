@@ -12,6 +12,8 @@
   --magenta: #ff2bd6;
   --yellow: #f5ff3b;
   --ok: #39ff88;
+  /* status lights (works / broken); a theme may tint --ok, these stay green/red */
+  --signal-ok: var(--ok);
   --err: #ff3b5c;
   --accent: var(--cyan);
 
@@ -132,6 +134,7 @@
   --magenta: #d35f5f;
   --yellow: #ffc107;
   --ok: #ffc107;
+  --signal-ok: #8fbf6f;
   --err: #d35f5f;
   --accent: #e68e0d;
 
