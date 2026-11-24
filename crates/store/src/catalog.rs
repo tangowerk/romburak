@@ -153,13 +153,18 @@ impl Store {
             let ident = if !d.missing.is_empty() {
                 Ident::Skip(format!("{} missing track(s)", d.missing.len()))
             } else {
-                let records = match self.identify_disc(d)? {
-                    DiscMatch::Hash(Match::Verified(r) | Match::CrcOnly(r))
-                    | DiscMatch::Serial(r) => r,
-                    DiscMatch::Hash(Match::Unknown) | DiscMatch::Unknown => Vec::new(),
+                let (records, by_serial) = match self.identify_disc(d)? {
+                    DiscMatch::Hash(Match::Verified(r) | Match::CrcOnly(r)) => (r, false),
+                    DiscMatch::Serial(r) => (r, true),
+                    DiscMatch::Hash(Match::Unknown) | DiscMatch::Unknown => (Vec::new(), false),
                 };
                 let sha1 = d.tracks.first().map(|t| t.hashes.sha1).unwrap_or_default();
-                self.ident(&records, &sha1, &d.path, &d.path)?
+                let ident = self.ident(&records, &sha1, &d.path, &d.path)?;
+                match (in_library, by_serial) {
+                    (true, true) => keep_library_name(ident, &d.path),
+                    (true, false) => named_candidate(ident, &d.path),
+                    _ => ident,
+                }
             };
             let files = if d.tracks.len() == 1 && d.tracks[0].path == d.path {
                 Files::Single(d.path.clone())
@@ -602,6 +607,47 @@ fn firmware_item(rom: &ScannedRom, in_library: bool) -> Option<Item> {
     })
 }
 
+/// A library disc matched only by serial or game ID (no hash: Saturn, GameCube/Wii, …) keeps
+/// its name while the database names the same title: a serial can't tell pressings (`(2S)`
+/// vs `(3S)`), revisions or sometimes regions apart, so a newer database must not rename a
+/// clean library on a guess (User, 2026-11-24). A different title is still renamed.
+fn keep_library_name(ident: Ident, path: &Path) -> Ident {
+    let Some(current) = path.file_stem().and_then(|s| s.to_str()) else {
+        return ident;
+    };
+    // database names carry `:` etc., file names the sanitized form (`Zelda_ The Wind Waker`)
+    let title = |n: &str| {
+        let n = romburak_core::naming::sanitize_file_name(n);
+        n.split(" (").next().unwrap_or(&n).trim().to_owned()
+    };
+    let keep = |g: &Game| {
+        (title(&g.name) == title(current)).then(|| Game {
+            name: current.to_owned(),
+            ..g.clone()
+        })
+    };
+    match &ident {
+        Ident::Known(g) => keep(g).map_or(ident, Ident::Known),
+        Ident::Ambiguous(gs) => gs.iter().find_map(keep).map_or(ident, Ident::Known),
+        _ => ident,
+    }
+}
+
+/// A library file named exactly like one of several equally good candidates (same hash under
+/// two names in a newer database, e.g. a `(v1.01)` twin) is that candidate: nothing to ask.
+fn named_candidate(ident: Ident, path: &Path) -> Ident {
+    let Some(current) = path.file_stem().and_then(|s| s.to_str()) else {
+        return ident;
+    };
+    match &ident {
+        Ident::Ambiguous(gs) => gs
+            .iter()
+            .find(|g| romburak_core::naming::sanitize_file_name(&g.name) == current)
+            .map_or(ident.clone(), |g| Ident::Known(g.clone())),
+        _ => ident,
+    }
+}
+
 pub(crate) fn game(r: &Record) -> Game {
     Game {
         system: r.system.clone(),
@@ -669,4 +715,53 @@ fn read_chds(dir: &Path) -> Vec<PathBuf> {
         .collect();
     chds.sort();
     chds
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn g(name: &str) -> Game {
+        Game {
+            system: "Sega - Saturn".into(),
+            name: name.into(),
+            crc: None,
+        }
+    }
+
+    #[test]
+    fn serial_match_keeps_library_name_of_same_title() {
+        let p = Path::new("/lib/Nintendo - GameCube/The Legend of Zelda_ The Wind Waker (USA).rvz");
+        let got = keep_library_name(
+            Ident::Known(g("The Legend of Zelda: The Wind Waker (USA) (Rev 1.48)")),
+            p,
+        );
+        assert_eq!(
+            got,
+            Ident::Known(g("The Legend of Zelda_ The Wind Waker (USA)"))
+        );
+        let p = Path::new("/lib/Sega - Saturn/Virtua Fighter 2 (USA).cue");
+        let got = keep_library_name(Ident::Ambiguous(vec![g("Virtua Fighter 2 (Korea)")]), p);
+        assert_eq!(got, Ident::Known(g("Virtua Fighter 2 (USA)")));
+        // another title is a real rename
+        let p = Path::new("/lib/Sega - Saturn/Wachenroeder (Japan).chd");
+        let other = Ident::Known(g("Wachenroder (Japan)"));
+        assert_eq!(keep_library_name(other.clone(), p), other);
+    }
+
+    #[test]
+    fn library_file_named_like_a_candidate_is_that_candidate() {
+        let p = Path::new("/lib/PSP/Secret Agent Clank (USA) (En,Fr,De,Es,It).cso");
+        let both = Ident::Ambiguous(vec![
+            g("Secret Agent Clank (USA) (En,Fr,De,Es,It)"),
+            g("Secret Agent Clank (USA) (En,Fr,De,Es,It) (v1.01)"),
+        ]);
+        assert_eq!(
+            named_candidate(both, p),
+            Ident::Known(g("Secret Agent Clank (USA) (En,Fr,De,Es,It)"))
+        );
+        let p = Path::new("/lib/PSP/Something else.iso");
+        let amb = Ident::Ambiguous(vec![g("A"), g("B")]);
+        assert_eq!(named_candidate(amb.clone(), p), amb);
+    }
 }
