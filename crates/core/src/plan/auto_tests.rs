@@ -213,7 +213,7 @@ fn more_complete_inbox_copy_replaces_the_library_copy() {
     assert!(plan.ops[1].target().ends_with(&rel));
     assert!(plan.why.iter().all(|w| w.rule == Rule::AutoConflict));
     assert!(
-        plan.why[0].detail.contains("20/20 vs 18/20"),
+        plan.why[0].detail.contains("20/20 vs 18/20 roms"),
         "{}",
         plan.why[0]
     );

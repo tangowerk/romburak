@@ -23,10 +23,7 @@ impl Builder<'_> {
         };
         let theirs = score(&other)?;
         let missing = |(have, need): (u32, u32)| need.saturating_sub(have);
-        let detail = format!(
-            "{}/{} vs {}/{} roms of the DAT set",
-            mine.0, mine.1, theirs.0, theirs.1
-        );
+        let detail = format!("{}/{} vs {}/{} roms", mine.0, mine.1, theirs.0, theirs.1);
         if missing(mine) < missing(theirs) {
             if !replaceable {
                 return None;
