@@ -18,8 +18,9 @@
 
 :root[data-theme="omarchy"] .sidebar {
   background: var(--bg-sunken);
-  border-image: none;
   border-right: 1px solid var(--line);
+  /* a solid "gradient", not `none`: WebKitGTK kept the neon edge gradient with `none` */
+  border-image: linear-gradient(var(--line), var(--line)) 1;
 }
 :root[data-theme="omarchy"] .nav-item {
   font-size: var(--fs-sm);
