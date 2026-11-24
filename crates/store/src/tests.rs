@@ -355,8 +355,11 @@ fn verdicts_roundtrip() {
         .unwrap();
     s.set_verdict("Sys", "C", Some(Verdict::Keep), "").unwrap();
     s.set_verdict("Sys", "C", None, "").unwrap();
+    s.set_verdict("Sys", "D", Some(Verdict::Prefer), "1G1R tie")
+        .unwrap();
     let v = s.verdicts().unwrap();
-    assert_eq!(v.len(), 2);
+    assert_eq!(v.len(), 3);
+    assert_eq!(v[&("Sys".into(), "D".into())], Verdict::Prefer);
     assert_eq!(v[&("Sys".into(), "A".into())], Verdict::Keep);
     assert_eq!(v[&("Sys".into(), "B".into())], Verdict::Discard);
     let rows = s.verdict_rows().unwrap();

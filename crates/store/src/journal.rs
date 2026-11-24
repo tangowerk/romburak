@@ -205,10 +205,12 @@ impl Store {
         let mut out = HashMap::new();
         for row in rows {
             let (system, name, v) = row?;
-            let v = if v == "keep" {
-                Verdict::Keep
-            } else {
-                Verdict::Discard
+            // "prefer" (tie resolved by the user) used to fall through to Discard: the tie
+            // then came back on every plan
+            let v = match v.as_str() {
+                "keep" => Verdict::Keep,
+                "prefer" => Verdict::Prefer,
+                _ => Verdict::Discard,
             };
             out.insert((system, name), v);
         }
