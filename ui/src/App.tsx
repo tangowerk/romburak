@@ -5,7 +5,6 @@ import CommandPalette, { type Command } from "./components/CommandPalette";
 import Dashboard from "./views/Dashboard";
 import Placeholder from "./views/Placeholder";
 import System from "./views/System";
-import RetroArch from "./views/RetroArch";
 import Rules from "./views/Rules";
 import Sidebar from "./components/Sidebar";
 import { libraryJump } from "./state/jump";
@@ -82,9 +81,6 @@ export default function App() {
           </Match>
           <Match when={view() === "library"}>
             <Library onSettings={() => (setSystemSection("library"), setView("system"))} />
-          </Match>
-          <Match when={view() === "retroarch"}>
-            <RetroArch />
           </Match>
           <Match when={view() === "rules"}>
             <Rules />

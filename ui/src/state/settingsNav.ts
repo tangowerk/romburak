@@ -1,10 +1,11 @@
 import { createSignal } from "solid-js";
 
-export type SystemSection = "library" | "databases" | "achievements" | "appearance";
+export type SystemSection = "library" | "databases" | "retroarch" | "achievements" | "appearance";
 
 export const SECTIONS: { id: SystemSection; label: string }[] = [
   { id: "library", label: "Library" },
   { id: "databases", label: "Databases" },
+  { id: "retroarch", label: "RetroArch" },
   { id: "achievements", label: "Achievements" },
   { id: "appearance", label: "Appearance" },
 ];

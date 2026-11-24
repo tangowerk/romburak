@@ -1,5 +1,6 @@
 import { createResource, For, Match, Switch } from "solid-js";
 import AchievementsSettings from "./AchievementsSettings";
+import RetroArch from "./RetroArch";
 import DatabasePanel from "../components/DatabasePanel";
 import { OpenDecisionsPanel, TrashPanel } from "./DashboardQueue";
 import DirField from "../components/DirField";
@@ -74,7 +75,7 @@ function Appearance() {
   );
 }
 
-/** Maintenance and preferences: library folder, game databases, achievements, appearance. */
+/** Maintenance and preferences: library folder, game databases, RetroArch, achievements, appearance. */
 export default function System(props: { onReview: () => void }) {
   return (
     <div class="settings-shell">
@@ -101,6 +102,9 @@ export default function System(props: { onReview: () => void }) {
             <div class="settings">
               <DatabasePanel />
             </div>
+          </Match>
+          <Match when={systemSection() === "retroarch"}>
+            <RetroArch />
           </Match>
           <Match when={systemSection() === "achievements"}>
             <AchievementsSettings />
