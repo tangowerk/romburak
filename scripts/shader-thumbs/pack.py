@@ -26,7 +26,7 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
     mapping: dict[str, str] = {}
     failed = []
-    for preset in presets.read_text().split():
+    for preset in presets.read_text().splitlines():
         png = png_dir / (preset.removesuffix(".slangp") + ".png")
         try:
             img = Image.open(png).convert("RGB")

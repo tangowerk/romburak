@@ -895,12 +895,12 @@ export async function raShaders(): Promise<ShaderPreset[]> {
   if (!inTauri) {
     await mockProgress("ra://package", ["download"], phased);
     const mock: [string, number, string, string, string, string | null][] = [
-      ["crt/crt-royale.slangp", 12, "2016-08-19", "2023-02-24", "hunterk", null],
-      ["crt/crt-lottes.slangp", 3, "2016-07-31", "2021-06-14", "hunterk", null],
-      ["crt/crt-geom.slangp", 2, "2016-07-12", "2023-03-20", "hunterk", null],
-      ["handheld/lcd-grid-v2.slangp", 4, "2016-08-03", "2016-08-03", "hunterk", null],
-      ["presets/crt-royale-smooth.slangp", 1, "2020-02-11", "2022-09-01", "Duimon", null],
-      ["scanlines/scanline.slangp", 1, "2016-07-12", "2016-07-12", "hunterk", null],
+      ["crt/crt-royale.slangp", 12, "2016-08-19", "2023-02-24", "hunterk", "e83a58c16711"],
+      ["crt/crt-lottes.slangp", 3, "2016-07-31", "2021-06-14", "hunterk", "a981e05185c7"],
+      ["crt/crt-geom.slangp", 2, "2016-07-12", "2023-03-20", "hunterk", "b6aba5013f83"],
+      ["handheld/lcd-grid-v2.slangp", 4, "2016-08-03", "2016-08-03", "hunterk", "0fc3102f8f14"],
+      ["presets/crt-royale-smooth.slangp", 1, "2020-02-11", "2022-09-01", "Duimon", "e8e3ea6f3c00"],
+      ["scanlines/scanline.slangp", 1, "2016-07-12", "2016-07-12", "hunterk", "bc497be3ca09"],
       ["xbrz/xbrz-freescale.slangp", 2, "2018-01-02", "2019-05-04", "hunterk", null],
     ];
     return mock.map(([path, passes, added, changed, author, thumb]) => ({ path, passes, added, changed, author, thumb }));
