@@ -212,6 +212,27 @@ fn copy_dir(src: &Path, dest: &Path) -> io::Result<()> {
     Ok(())
 }
 
+/// Shader passes of a `.slangp` preset (a GPU-load hint), following `#reference` chains
+/// (about a quarter of the presets only point at another one).
+pub fn preset_passes(preset: &Path) -> Option<u32> {
+    let mut path = preset.to_path_buf();
+    for _ in 0..8 {
+        let text = std::fs::read_to_string(&path).ok()?;
+        let mut reference = None;
+        for line in text.lines().map(str::trim) {
+            if let Some(r) = line.strip_prefix("#reference") {
+                reference.get_or_insert_with(|| r.trim().trim_matches('"').to_owned());
+            } else if let Some((k, v)) = line.split_once('=')
+                && k.trim() == "shaders"
+            {
+                return v.trim().trim_matches('"').parse().ok();
+            }
+        }
+        path = path.parent()?.join(reference?);
+    }
+    None
+}
+
 fn walk(base: &Path, dir: &Path, out: &mut Vec<String>) {
     let Ok(rd) = std::fs::read_dir(dir) else {
         return;

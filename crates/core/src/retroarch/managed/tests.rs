@@ -291,3 +291,31 @@ fn nightly_on_x64() {
     assert!(is_nightly_version("nightly-2026-11-24"));
     assert!(!is_nightly_version("1.22.2"));
 }
+
+#[test]
+fn preset_passes_follow_references() {
+    let t = tempfile::tempdir().unwrap();
+    let d = t.path();
+    std::fs::create_dir_all(d.join("crt/shaders")).unwrap();
+    std::fs::write(
+        d.join("crt/shaders/base.slangp"),
+        "shaders = \"3\"\nshader0 = a.slang\n",
+    )
+    .unwrap();
+    std::fs::write(
+        d.join("crt/ref.slangp"),
+        "#reference \"shaders/base.slangp\"\nfoo = 1\n",
+    )
+    .unwrap();
+    std::fs::write(d.join("plain.slangp"), "shaders = 12\n").unwrap();
+    std::fs::write(d.join("broken.slangp"), "#reference \"missing.slangp\"\n").unwrap();
+    assert_eq!(
+        super::video::preset_passes(&d.join("plain.slangp")),
+        Some(12)
+    );
+    assert_eq!(
+        super::video::preset_passes(&d.join("crt/ref.slangp")),
+        Some(3)
+    );
+    assert_eq!(super::video::preset_passes(&d.join("broken.slangp")), None);
+}

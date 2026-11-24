@@ -2,7 +2,7 @@
 
 use crate::commands::{CmdResult, Progress, err, open_store};
 use crate::managed_ra::rewrite_config;
-use romburak_core::retroarch::managed::Managed;
+use romburak_core::retroarch::managed::{Managed, video};
 use serde::Serialize;
 use tauri::Emitter;
 
@@ -24,10 +24,17 @@ pub fn ra_video() -> CmdResult<VideoView> {
     })
 }
 
+/// A shader preset: path below `shaders_slang` and its pass count (GPU-load hint).
+#[derive(Serialize)]
+pub struct Preset {
+    path: String,
+    passes: Option<u32>,
+}
+
 /// Shader presets of `shaders_slang`; downloads the package first if RetroArch has none
 /// (progress on `ra://package`: phase download/unpack, MB, "").
 #[tauri::command]
-pub async fn ra_shaders(app: tauri::AppHandle) -> CmdResult<Vec<String>> {
+pub async fn ra_shaders(app: tauri::AppHandle) -> CmdResult<Vec<Preset>> {
     tauri::async_runtime::spawn_blocking(move || {
         let m = Managed::detect().ok_or("no RetroArch stable build for this platform")?;
         let progress = |done: u64, total: Option<u64>| {
@@ -43,9 +50,16 @@ pub async fn ra_shaders(app: tauri::AppHandle) -> CmdResult<Vec<String>> {
             };
             let _ = app.emit("ra://package", (phase, p, ""));
         };
-        m.ensure_package("shaders_slang", &romburak_store::http_download, &progress)
+        let dir = m
+            .ensure_package("shaders_slang", &romburak_store::http_download, &progress)
             .map_err(err)?;
-        Ok(m.shader_presets())
+        Ok(m.shader_presets()
+            .into_iter()
+            .map(|path| Preset {
+                passes: video::preset_passes(&dir.join(&path)),
+                path,
+            })
+            .collect())
     })
     .await
     .map_err(err)?

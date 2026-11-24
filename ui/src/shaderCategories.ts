@@ -1,0 +1,43 @@
+// Short descriptions of the top-level folders of libretro's slang-shaders, shown in the shader picker.
+
+export const SHADER_CATEGORIES: Record<string, string> = {
+  basic: "Plain scaling without effects (nearest neighbour, bilinear)",
+  "anti-aliasing": "Smooths jagged edges of 3D games",
+  anamorphic: "Corrects anamorphic (stretched) pictures",
+  bezel: "CRT picture inside a TV or handheld frame (Mega Bezel, koko-aio)",
+  blurs: "Blur filters, mostly building blocks for other presets",
+  border: "Game picture with a decorative border or console artwork",
+  cel: "Cartoon look with outlines",
+  crt: "Tube TV / arcade monitor: scanlines, shadow mask, glow, curvature",
+  deblur: "Sharpens soft pictures",
+  deinterlacing: "Removes interlacing comb artefacts",
+  denoisers: "Reduces noise and grain",
+  dithering: "Blends dithering patterns into the colours they were meant to show",
+  downsample: "Scales down high-resolution output (e.g. upscaled 3D) cleanly",
+  "edge-smoothing": "Pixel-art upscalers that round edges (xBR, ScaleFX, Eagle …)",
+  film: "Film grain and analog film look",
+  gpu: "GPU-specific helpers",
+  handheld: "LCD look of handhelds: pixel grid, ghosting, colour (Game Boy, GBA, DS …)",
+  hdr: "For HDR displays: brighter CRT simulation",
+  interpolation: "Smooth scaling filters (bicubic, Lanczos, …)",
+  linear: "Linear (gamma-correct) scaling",
+  misc: "Assorted effects and colour tools",
+  motionblur: "Motion blur and phosphor persistence",
+  "motion-interpolation": "Inserts in-between frames",
+  nes_raw_palette: "NES colour decoding from raw palette output",
+  ntsc: "NTSC composite/RF signal: colour bleeding, artefacts, dot crawl",
+  pal: "PAL composite/RF signal artefacts",
+  "pixel-art-scaling": "Sharp, even pixels at any scale without blur",
+  presets: "Ready-made combinations of several shaders",
+  reshade: "Ports of ReShade effects (LUTs, bloom, colour correction)",
+  scanlines: "Simple scanlines without full CRT simulation",
+  sharpen: "Sharpening filters",
+  "stereoscopic-3d": "3D glasses / side-by-side output",
+  "subframe-bfi": "Black frame insertion for smoother motion on high-Hz displays",
+  test: "Test patterns for calibration",
+  vhs: "VHS tape look: wobble, noise, colour smear",
+  warp: "Picture distortion effects",
+};
+
+/** Category of a preset path: its top folder, `basic` for presets in the root. */
+export const shaderCategory = (path: string) => (path.includes("/") ? path.split("/")[0] : "basic");

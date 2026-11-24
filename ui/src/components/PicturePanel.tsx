@@ -5,6 +5,7 @@ import Panel from "./Panel";
 import PhaseProgress from "./PhaseProgress";
 import Select from "./Select";
 import { onPlayEnded, raRunning, raSetAspect, raSetShader, raShaders, raVideo } from "../ipc";
+import { SHADER_CATEGORIES, shaderCategory } from "../shaderCategories";
 
 const ASPECTS = [
   { value: "", label: "RetroArch decides", hint: "its own menu setting" },
@@ -30,10 +31,22 @@ export default function PicturePanel() {
   const unlisten = onPlayEnded(() => void refetchRunning());
   onCleanup(() => (clearInterval(poll), void unlisten.then((f) => f())));
   const [query, setQuery] = createSignal("");
+  const [category, setCategory] = createSignal("");
+  const categoryOptions = createMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of presets() ?? []) counts.set(shaderCategory(p.path), (counts.get(shaderCategory(p.path)) ?? 0) + 1);
+    return [
+      { value: "", label: "All categories", hint: `${presets()?.length ?? 0}` },
+      ...[...counts].sort(([a], [b]) => a.localeCompare(b)).map(([c, n]) => ({ value: c, label: c, hint: `${n}` })),
+    ];
+  });
   const [msg, setMsg] = createSignal("");
   const matches = createMemo(() => {
     const words = query().toLowerCase().split(/\s+/).filter(Boolean);
-    return (presets() ?? []).filter((p) => words.every((w) => p.toLowerCase().includes(w)));
+    return (presets() ?? []).filter(
+      (p) =>
+        (!category() || shaderCategory(p.path) === category()) && words.every((w) => p.path.toLowerCase().includes(w)),
+    );
   });
   const paged = createPaged(matches, () => 12);
   const run = async (f: () => Promise<unknown>, ok: string) => {
@@ -88,23 +101,37 @@ export default function PicturePanel() {
           }
         >
           <Show when={!presets.error} fallback={<p class="err small">{String(presets.error)}</p>}>
-            <input
-              class="field preset-search"
-              type="search"
-              placeholder={`Search ${presets()?.length ?? 0} presets, e.g. "crt royale"`}
-              value={query()}
-              onInput={(e) => setQuery(e.currentTarget.value)}
-            />
+            <div class="row">
+              <Select value={category()} options={categoryOptions()} onChange={setCategory} />
+              <input
+                class="field preset-search"
+                type="search"
+                placeholder={`Search ${matches().length} presets, e.g. "crt royale"`}
+                value={query()}
+                onInput={(e) => setQuery(e.currentTarget.value)}
+              />
+            </div>
+            <Show when={category()}>
+              <p class="dim small">{SHADER_CATEGORIES[category()] ?? ""}</p>
+            </Show>
             <ul class="preset-list">
               <For each={paged.items()}>
                 {(p) => (
                   <li>
                     <button
                       class="preset mono small"
-                      classList={{ sel: shader() === p }}
-                      onClick={() => void run(() => raSetShader(p), `Shader: ${p}`)}
+                      classList={{ sel: shader() === p.path }}
+                      title={SHADER_CATEGORIES[shaderCategory(p.path)] ?? ""}
+                      onClick={() => void run(() => raSetShader(p.path), `Shader: ${p.path}`)}
                     >
-                      {p.replace(/\.slangp$/, "")}
+                      <span>{p.path.replace(/\.slangp$/, "")}</span>
+                      <Show when={p.passes}>
+                        {(n) => (
+                          <span class="preset-passes dim" title="Shader passes: more passes = more GPU load">
+                            {n()} {n() === 1 ? "pass" : "passes"}
+                          </span>
+                        )}
+                      </Show>
                     </button>
                   </li>
                 )}

@@ -869,14 +869,17 @@ export async function raVideo(): Promise<RaVideo> {
   return invoke<RaVideo>("ra_video");
 }
 
+/** A shader preset: path below `shaders_slang`, pass count as GPU-load hint (null = unknown). */
+export interface ShaderPreset { path: string; passes: number | null }
+
 /** Shader presets (`shaders_slang`); downloads the package first if RetroArch has none. */
-export async function raShaders(): Promise<string[]> {
+export async function raShaders(): Promise<ShaderPreset[]> {
   if (!inTauri) {
     await mockProgress("ra://package", ["download"], phased);
     return ["crt/crt-royale.slangp", "crt/crt-lottes.slangp", "crt/crt-geom.slangp", "handheld/lcd-grid-v2.slangp",
-      "presets/crt-royale-smooth.slangp", "scanlines/scanline.slangp", "xbrz/xbrz-freescale.slangp"];
+      "presets/crt-royale-smooth.slangp", "scanlines/scanline.slangp", "xbrz/xbrz-freescale.slangp"].map((path, i) => ({ path, passes: [12, 3, 2, 4, 1, 1, 2][i] ?? 1 }));
   }
-  return invoke<string[]>("ra_shaders");
+  return invoke<ShaderPreset[]>("ra_shaders");
 }
 
 /** Saves the shader; a running game switches right away (returns true then, not for null). */
