@@ -522,6 +522,12 @@ export interface Rules {
   systems: Record<string, SystemRules>;
   /** RetroArch core per system (core id); unlisted systems use the recommendation. */
   cores: Record<string, string>;
+  /** 1G1R ties are decided without asking (a preferred release still wins). */
+  auto_ties: boolean;
+  /** Releases 1G1R did not pick go to _trash instead of the decision queue. */
+  auto_trash: boolean;
+  /** Arcade conflicts: the copy more complete for the core's DAT wins. */
+  auto_conflicts: boolean;
 }
 
 export interface SystemRules {
@@ -549,6 +555,9 @@ const mockRules = (): Rules => ({
   frontend_trash: true,
   systems: {},
   cores: {},
+  auto_ties: true,
+  auto_trash: true,
+  auto_conflicts: true,
 });
 
 export async function rulesGet(): Promise<Rules> {
@@ -763,6 +772,9 @@ export async function rulesCatalog(): Promise<RuleInfo[]> {
       { id: "name-only", title: "Name folder", explain: "Files without hash match whose folder names a system (e.g. solarus, openbor).", hits: 4 },
       { id: "quarantine", title: "Quarantine", explain: "Files without database match go to _quarantine.", hits: 5270 },
       { id: "playlist", title: "Old RetroArch playlist", explain: "Old .lpl files go to the trash.", hits: 30 },
+      { id: "auto-tie", title: "Tie decided", explain: "Equal releases: original before crack before trainer, no country tag, fewer tags.", hits: 27 },
+      { id: "auto-trash", title: "1G1R loser to trash", explain: "Releases 1G1R did not pick go to _trash.", hits: 1165 },
+      { id: "auto-conflict", title: "Conflict decided", explain: "Arcade conflicts: the copy more complete for the core's DAT wins.", hits: 6 },
     ];
   return invoke<RuleInfo[]>("rules_catalog");
 }

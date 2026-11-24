@@ -22,6 +22,9 @@ const FIELDS: Record<string, (keyof R)[]> = {
   "name-only": ["name_folders"],
   quarantine: ["quarantine", "unknown_to_trash"],
   "frontend-meta": ["frontend_trash"],
+  "auto-tie": ["auto_ties"],
+  "auto-trash": ["auto_trash"],
+  "auto-conflict": ["auto_conflicts"],
 };
 
 /** Every planner rule: what it does, how often it fired in the last plan, its settings. */
@@ -135,6 +138,28 @@ export default function Rules() {
             onChange={(e) => edit({ frontend_trash: e.currentTarget.checked })}
           />
           Move frontend metadata to _trash/frontend (off: treat it like any unknown file)
+        </label>
+      </Match>
+      <Match when={info.id === "auto-tie"}>
+        <label class="check">
+          <input type="checkbox" checked={r.auto_ties} onChange={(e) => edit({ auto_ties: e.currentTarget.checked })} />
+          Decide ties automatically (off: ask which release to keep)
+        </label>
+      </Match>
+      <Match when={info.id === "auto-trash"}>
+        <label class="check">
+          <input type="checkbox" checked={r.auto_trash} onChange={(e) => edit({ auto_trash: e.currentTarget.checked })} />
+          Move releases 1G1R did not pick to _trash (off: ask for each one)
+        </label>
+      </Match>
+      <Match when={info.id === "auto-conflict"}>
+        <label class="check">
+          <input
+            type="checkbox"
+            checked={r.auto_conflicts}
+            onChange={(e) => edit({ auto_conflicts: e.currentTarget.checked })}
+          />
+          Keep the more complete arcade copy (off: ask on every conflict)
         </label>
       </Match>
     </Switch>
