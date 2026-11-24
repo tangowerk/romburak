@@ -46,10 +46,9 @@ export default function Sidebar(props: Props) {
         <span class="logo-short">RB</span>
       </div>
       <nav class="nav">
-        <For each={VIEWS.filter((v) => !v.group)}>{item}</For>
+        <For each={VIEWS}>{item}</For>
       </nav>
       <nav class="nav nav-foot">
-        <For each={VIEWS.filter((v) => v.group === "foot")}>{item}</For>
         <button type="button" class="nav-item nav-collapse" title={collapsed() ? "Expand" : "Collapse"} onClick={toggle}>
           <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d={collapsed() ? "M9 6l6 6-6 6" : "M15 6l-6 6 6 6"} />
