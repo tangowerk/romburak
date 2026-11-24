@@ -830,11 +830,11 @@ export async function raStatus(checkLatest: boolean): Promise<ManagedRetroArch> 
 }
 let mockRa: string | null = null;
 
-/** Downloads, verifies and installs RetroArch (`version` null = pinned); progress on `ra://progress`. */
+/** Downloads, verifies and installs RetroArch (`version` null = pinned, "nightly" = newest nightly); progress on `ra://progress`. */
 export async function raInstall(version: string | null): Promise<string> {
   if (!inTauri) {
     await mockProgress("ra://progress", ["download", "verify", "unpack"], phased);
-    mockRa = version ?? "1.22.2";
+    mockRa = version === "nightly" ? `nightly-${new Date().toISOString().slice(0, 10)}` : (version ?? "1.22.2");
     return mockRa;
   }
   return invoke<string>("ra_install", { version });

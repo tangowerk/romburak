@@ -43,7 +43,7 @@ pub async fn ra_status(check_latest: bool) -> CmdResult<ManagedView> {
     .map_err(err)?
 }
 
-/// Installs `version` (default: pinned) and writes the config. Emits `ra://progress`
+/// Installs `version` (default: pinned, `nightly`: newest nightly) and writes the config. Emits `ra://progress`
 /// (phase download/verify/unpack, bytes in MB, "").
 #[tauri::command]
 pub async fn ra_install(app: tauri::AppHandle, version: Option<String>) -> CmdResult<String> {
@@ -65,13 +65,14 @@ pub async fn ra_install(app: tauri::AppHandle, version: Option<String>) -> CmdRe
                 ),
             );
         };
-        m.install(&version, &romburak_store::http_download, &|p| match p {
-            Phase::Download { done, total } => emit("download", done, total.unwrap_or(0)),
-            Phase::Verify => emit("verify", 0, 0),
-            Phase::Unpack { done, total } => emit("unpack", done, total),
-            Phase::Done => {}
-        })
-        .map_err(|e| format!("RetroArch {version}: {e}"))?;
+        let version = m
+            .install(&version, &romburak_store::http_download, &|p| match p {
+                Phase::Download { done, total } => emit("download", done, total.unwrap_or(0)),
+                Phase::Verify => emit("verify", 0, 0),
+                Phase::Unpack { done, total } => emit("unpack", done, total),
+                Phase::Done => {}
+            })
+            .map_err(|e| format!("RetroArch {version}: {e}"))?;
         let (store, _) = open_store()?;
         let library = store.library().map_err(err)?;
         let m = store.ra_prefs(m).map_err(err)?;

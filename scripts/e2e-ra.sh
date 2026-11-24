@@ -7,7 +7,8 @@ BIN=${BIN:-target/release/romburak}
 WORK=$(mktemp -d)
 native() { if command -v cygpath >/dev/null; then cygpath -w "$1"; else echo "$1"; fi; }
 
-"$BIN" ra install
+# RA_VERSION=nightly tests the nightly channel
+"$BIN" ra install ${RA_VERSION:+--version "$RA_VERSION"}
 status=$("$BIN" ra status)
 echo "$status"
 root=$(sed -n 's/^folder: *//p' <<<"$status")

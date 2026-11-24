@@ -1,5 +1,6 @@
 //! The RetroArch romburak downloads and runs itself: official stable builds from the
 //! libretro buildbot (Linux aarch64 has none: the newest nightly there), unpacked into `<data dir>/romburak/retroarch/versions/<version>/`.
+//! Opt-in everywhere: the newest nightly ([`NIGHTLY`]), installed as `nightly-YYYY-MM-DD`.
 //! Download → verify → unpack into a temp folder → atomic rename → `current` marker.
 //! Cores, saves, states and the config live next to the versions, so updates keep them.
 
@@ -15,6 +16,14 @@ pub mod video;
 
 /// Version shipped with this romburak release (raised with releases).
 pub const PINNED: &str = "1.22.2";
+
+/// Version that asks for the newest nightly build instead of a stable one.
+pub const NIGHTLY: &str = "nightly";
+
+/// Installed nightly versions are named `nightly-<install date>`.
+pub fn is_nightly_version(version: &str) -> bool {
+    version == NIGHTLY || version.starts_with("nightly-")
+}
 
 /// Buildbot root of the stable builds.
 pub const STABLE_URL: &str = "https://buildbot.libretro.com/stable";
@@ -96,11 +105,13 @@ impl Target {
         }
     }
 
-    /// Archive of `version`; on Linux aarch64 the newest nightly, whatever `version` says.
+    /// Archive of `version`; the newest nightly for a nightly version and always on
+    /// Linux aarch64, whatever `version` says.
     pub fn url(self, version: &str) -> String {
-        match self {
-            Self::LinuxArm64 => format!("{NIGHTLY_URL}/{}", self.remote()),
-            _ => format!("{STABLE_URL}/{version}/{}", self.remote()),
+        if self.is_nightly() || is_nightly_version(version) {
+            format!("{NIGHTLY_URL}/{}", self.remote())
+        } else {
+            format!("{STABLE_URL}/{version}/{}", self.remote())
         }
     }
 
@@ -183,12 +194,20 @@ impl Managed {
 
     /// Downloads, verifies and installs `version`, then makes it current. An already
     /// installed version is only re-activated. Older versions are removed afterwards.
+    /// [`NIGHTLY`] becomes `nightly-<today>`; returns the installed version.
     pub fn install(
         &self,
         version: &str,
         fetch: FetchFile,
         progress: &dyn Fn(Phase),
-    ) -> io::Result<()> {
+    ) -> io::Result<String> {
+        let resolved;
+        let version = if version == NIGHTLY {
+            resolved = format!("{NIGHTLY}-{}", today());
+            resolved.as_str()
+        } else {
+            version
+        };
         if !self.executable_of(version).is_file() {
             let dl = self.root.join("download");
             std::fs::create_dir_all(&dl)?;
@@ -237,7 +256,7 @@ impl Managed {
         std::fs::rename(marker, self.root.join("current"))?;
         self.prune(version);
         progress(Phase::Done);
-        Ok(())
+        Ok(version.to_owned())
     }
 
     /// Menu assets for a build that ships none, unpacked into `version_tmp`.
@@ -308,6 +327,27 @@ pub fn latest_stable(index_html: &str) -> Option<String> {
 pub fn parse_version(v: &str) -> Option<Vec<u32>> {
     let parts: Option<Vec<u32>> = v.split('.').map(|p| p.parse().ok()).collect();
     parts.filter(|p| p.len() >= 2)
+}
+
+/// Today's UTC date as `YYYY-MM-DD` (civil-from-days, H. Hinnant).
+fn today() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    civil_date(secs / 86_400)
+}
+
+fn civil_date(days: u64) -> String {
+    let z = days + 719_468;
+    let era = z / 146_097;
+    let doe = z % 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = yoe + era * 400 + u64::from(m <= 2);
+    format!("{y:04}-{m:02}-{d:02}")
 }
 
 fn sha256_file(path: &Path) -> io::Result<String> {

@@ -41,10 +41,12 @@ export default function ManagedRetroArchPanel() {
       setMsg(String(e));
     }
   };
+  /** Opt-in nightly channel: installed as `nightly-YYYY-MM-DD`. */
+  const onNightly = () => !!status()?.installed?.startsWith("nightly");
   const newer = () => {
     const s = status();
     // Without an installation there is nothing to update; the install button covers that case.
-    return s?.installed && s.latest && s.latest !== s.installed ? s.latest : null;
+    return s?.installed && !onNightly() && s.latest && s.latest !== s.installed ? s.latest : null;
   };
 
   return (
@@ -56,7 +58,15 @@ export default function ManagedRetroArchPanel() {
             <p class="dim small">
               <Show
                 when={s().nightly}
-                fallback={<>Romburak downloads the official stable build (pinned: {s().pinned}, ~200 MB)</>}
+                fallback={
+                  <Show
+                    when={onNightly()}
+                    fallback={<>Romburak downloads the official stable build (pinned: {s().pinned}, ~200 MB)</>}
+                  >
+                    Romburak runs the nightly channel (newest development build, untested, possibly broken on any
+                    given day; go back to stable {s().pinned} if something misbehaves)
+                  </Show>
+                }
               >
                 There is no stable build for this platform: Romburak downloads the newest nightly plus the menu assets
                 (~80 MB). It needs SDL2 and the usual desktop libraries from the system
@@ -77,13 +87,29 @@ export default function ManagedRetroArchPanel() {
                   </button>
                 )}
               </Show>
-              <Show when={!s().nightly && s().installed}>
+              <Show when={!s().nightly && onNightly()}>
+                <button class="btn" disabled={busy()} onClick={() => void install("nightly")}>
+                  Update nightly
+                </button>
+                <button class="btn ghost" disabled={busy()} onClick={() => void install(null)}>
+                  Back to stable {s().pinned}
+                </button>
+              </Show>
+              <Show when={!s().nightly && s().installed && !onNightly()}>
                 <button
                   class="btn ghost"
                   disabled={busy() || status.loading}
                   onClick={() => (check() ? void refetch() : setCheck(true))}
                 >
                   Check for updates
+                </button>
+                <button
+                  class="btn ghost"
+                  disabled={busy()}
+                  title="Newest development build: more recent fixes, but untested. Cores are always the newest anyway."
+                  onClick={() => void install("nightly")}
+                >
+                  Try nightly
                 </button>
               </Show>
             </div>

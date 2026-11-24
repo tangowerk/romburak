@@ -16,7 +16,7 @@ pub enum Cmd {
     },
     /// Download, verify and install RetroArch (default: the pinned version)
     Install {
-        /// Install this version instead
+        /// Install this version instead (`nightly`: the newest nightly build)
         #[arg(long, conflicts_with = "latest")]
         version: Option<String>,
         /// Install the newest stable version from the buildbot
@@ -97,10 +97,11 @@ pub fn run(cmd: Cmd) -> Result<()> {
                 (None, false) => managed::PINNED.to_owned(),
             };
             println!("RetroArch {v} → {}", m.root.display());
-            m.install(&v, &romburak_store::http_download, &show)
+            let v = m
+                .install(&v, &romburak_store::http_download, &show)
                 .with_context(|| format!("installing RetroArch {v}"))?;
             m.write_config(library.as_deref())?;
-            println!("installed, config: {}", m.cfg().display());
+            println!("installed {v}, config: {}", m.cfg().display());
         }
         Cmd::Config { library } => {
             m.write_config(library.as_deref())?;

@@ -268,3 +268,26 @@ fn config_keeps_user_lines_and_sets_folders() {
             .contains("video_shader_enable = \"false\"")
     );
 }
+
+#[test]
+fn civil_dates() {
+    assert_eq!(super::civil_date(0), "1970-01-01");
+    assert_eq!(super::civil_date(11_016), "2000-02-29");
+    assert_eq!(super::civil_date(20_781), "2026-11-24");
+}
+
+#[test]
+fn nightly_on_x64() {
+    let t = tempfile::tempdir().unwrap();
+    let m = linux(&t.path().join("ra"));
+    assert_eq!(
+        m.target.url(NIGHTLY),
+        "https://buildbot.libretro.com/nightly/linux/x86_64/RetroArch.7z"
+    );
+    assert_eq!(
+        m.target.url("1.22.2"),
+        "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch.7z"
+    );
+    assert!(is_nightly_version("nightly-2026-11-24"));
+    assert!(!is_nightly_version("1.22.2"));
+}
