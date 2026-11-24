@@ -2,7 +2,7 @@
 
 use crate::commands::{CmdResult, Progress, err, open_store};
 use crate::managed_ra::rewrite_config;
-use romburak_core::retroarch::managed::{Managed, video};
+use romburak_core::retroarch::managed::{Managed, shader_index, video};
 use serde::Serialize;
 use tauri::Emitter;
 
@@ -24,11 +24,17 @@ pub fn ra_video() -> CmdResult<VideoView> {
     })
 }
 
-/// A shader preset: path below `shaders_slang` and its pass count (GPU-load hint).
+/// A shader preset: path below `shaders_slang`, its pass count (GPU-load hint) and its
+/// history from the bundled slang-shaders index (`None` for presets newer than the index).
 #[derive(Serialize)]
 pub struct Preset {
     path: String,
     passes: Option<u32>,
+    added: Option<String>,
+    changed: Option<String>,
+    author: Option<String>,
+    /// Preview id: `thumb://localhost/shader/<id>.webp` (whole picture) and `<id>-detail.webp`.
+    thumb: Option<&'static str>,
 }
 
 /// Shader presets of `shaders_slang`; downloads the package first if RetroArch has none
@@ -55,9 +61,16 @@ pub async fn ra_shaders(app: tauri::AppHandle) -> CmdResult<Vec<Preset>> {
             .map_err(err)?;
         Ok(m.shader_presets()
             .into_iter()
-            .map(|path| Preset {
-                passes: video::preset_passes(&dir.join(&path)),
-                path,
+            .map(|path| {
+                let meta = shader_index::meta(&path);
+                Preset {
+                    passes: video::preset_passes(&dir.join(&path)),
+                    added: meta.as_ref().map(|m| m.added.clone()),
+                    changed: meta.as_ref().map(|m| m.changed.clone()),
+                    author: meta.map(|m| m.author),
+                    thumb: shader_index::thumb(&path),
+                    path,
+                }
             })
             .collect())
     })

@@ -11,6 +11,7 @@ pub mod cheevos;
 pub mod config;
 pub mod display;
 pub mod launch;
+pub mod shader_index;
 mod unpack;
 pub mod video;
 
