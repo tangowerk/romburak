@@ -9,6 +9,27 @@ use rusqlite::{OptionalExtension, params};
 use std::io::{Read, Write};
 use std::path::Path;
 
+/// Version of how library items are identified. Bump it whenever identification changes
+/// (planner/catalog logic, not only data): an older snapshot is rebuilt instead of replaying
+/// stale identifications (2026-11-24: a snapshot built before the serial-match fix kept 59
+/// wrong renames in the app's plan while the CLI was already clean).
+const VERSION: u32 = 2;
+
+#[derive(serde::Serialize)]
+struct Stored<'a> {
+    v: u32,
+    #[serde(flatten)]
+    snap: &'a Snapshot,
+}
+
+#[derive(serde::Deserialize)]
+struct Loaded {
+    #[serde(default)]
+    v: u32,
+    #[serde(flatten)]
+    snap: Snapshot,
+}
+
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Snapshot {
     /// Library items as [`Store::items`] returns them.
@@ -31,13 +52,16 @@ impl Store {
         let Some(data) = data else { return Ok(None) };
         let mut json = Vec::new();
         flate2::read::GzDecoder::new(data.as_slice()).read_to_end(&mut json)?;
-        // an unreadable snapshot (older format) is simply rebuilt
-        Ok(serde_json::from_slice(&json).ok())
+        // an unreadable or older snapshot is simply rebuilt
+        Ok(serde_json::from_slice::<Loaded>(&json)
+            .ok()
+            .filter(|l| l.v == VERSION)
+            .map(|l| l.snap))
     }
 
     pub fn save_snapshot(&self, root: &Path, snap: &Snapshot) -> Result<()> {
         // serialize first: many tiny writes straight into the encoder are slow
-        let json = serde_json::to_vec(snap)?;
+        let json = serde_json::to_vec(&Stored { v: VERSION, snap })?;
         let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
         gz.write_all(&json)?;
         let data = gz.finish()?;
@@ -128,6 +152,25 @@ mod tests {
             }],
             sets: vec!["neogeo".into()],
         }
+    }
+
+    #[test]
+    fn older_version_is_rebuilt() {
+        let s = Store::open_in_memory().unwrap();
+        let root = Path::new("/lib");
+        s.save_snapshot(root, &snap()).unwrap();
+        assert_eq!(s.snapshot(root).unwrap().unwrap().sets, vec!["neogeo"]);
+        // a snapshot written before versioning (plain JSON, no `v`)
+        let json = serde_json::to_vec(&snap()).unwrap();
+        let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+        gz.write_all(&json).unwrap();
+        s.conn
+            .execute(
+                "UPDATE snapshot SET data = ?1 WHERE root = '/lib'",
+                [gz.finish().unwrap()],
+            )
+            .unwrap();
+        assert!(s.snapshot(root).unwrap().is_none());
     }
 
     #[test]
