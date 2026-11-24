@@ -34,7 +34,7 @@ pub fn run(a: Args) -> Result<()> {
     } else {
         Default::default()
     };
-    let opts = Options {
+    let mut opts = Options {
         mode: a.mode,
         rules: store.rules()?,
         verdicts: store.verdicts()?,
@@ -42,8 +42,9 @@ pub fn run(a: Args) -> Result<()> {
         ignore: store.ignored()?,
         hashes,
         misnamed,
+        dat_score: Default::default(),
     };
-    let p = plan::build(&items, &library, &opts);
+    let p = store.plan(&items, &library, &mut opts)?;
     store.set_rule_hits(&p.why)?;
     for (op, why) in p.ops.iter().zip(&p.why) {
         if why.detail.is_empty() {

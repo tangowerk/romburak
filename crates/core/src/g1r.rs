@@ -38,6 +38,14 @@ pub struct Rules {
     /// Folder name → system for files without database match (cartridge conversions, games
     /// without a database); their file name is the release name (SPEC §11a).
     pub name_folders: BTreeMap<String, String>,
+    /// 1G1R ties are decided by [`auto_tie`] instead of asking (a `prefer` verdict wins).
+    pub auto_ties: bool,
+    /// Releases 1G1R did not pick (duplicates, other regions, older revisions, tie losers)
+    /// go to `_trash` instead of the decision queue (a `keep` verdict wins).
+    pub auto_trash: bool,
+    /// Arcade conflicts (same target, different content): the copy more complete for the
+    /// target core's DAT wins, the other goes to `_trash`; equal keeps the library copy.
+    pub auto_conflicts: bool,
 }
 
 /// Overrides for one system; `None` falls back to the global value.
@@ -106,6 +114,9 @@ impl Default for Rules {
                 ]
                 .map(|(f, s)| (f.to_owned(), s.to_owned())),
             ),
+            auto_ties: true,
+            auto_trash: true,
+            auto_conflicts: true,
         }
     }
 }
@@ -122,6 +133,21 @@ pub enum Reason {
     Variant,
     Revision,
     TieBreak,
+}
+
+impl Reason {
+    /// Short human text (`other region`, `excluded: beta`).
+    pub fn label(self) -> String {
+        match self {
+            Reason::Excluded(f) => format!("excluded: {f}"),
+            Reason::Duplicate => "duplicate of the kept file".into(),
+            Reason::Region => "other region".into(),
+            Reason::Language => "other language".into(),
+            Reason::Variant => "variant of the kept release".into(),
+            Reason::Revision => "older revision".into(),
+            Reason::TieBreak => "lost the tie".into(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -261,6 +287,49 @@ fn score(info: &NameInfo<'_>, rules: &Rules) -> Score {
         Reverse(info.revision),
         Reverse(info.languages.len()),
     )
+}
+
+/// Decides a 1G1R tie between `releases` (names without disc tag; non-empty): original
+/// (no `[...]` flags) before crack `[cr …]` before trainer `[t …]` and other dump flags; no
+/// region or `(World)` before a country; fewer tags before more; then name order. Returns
+/// the index of the pick and the criterion that decided it against the runner-up.
+pub fn auto_tie(releases: &[String]) -> (usize, &'static str) {
+    type Key<'a> = (u8, u8, usize, &'a str);
+    fn key(name: &str) -> Key<'_> {
+        let brackets: Vec<&str> = name
+            .split('[')
+            .skip(1)
+            .filter_map(|b| b.split(']').next())
+            .collect();
+        let dump = if brackets.is_empty() {
+            0
+        } else if brackets.iter().all(|b| *b == "cr" || b.starts_with("cr ")) {
+            1
+        } else {
+            2
+        };
+        let regions = naming::parse(name).regions;
+        let region = u8::from(!(regions.is_empty() || regions == ["World"]));
+        let tags = name.matches(['(', '[']).count();
+        (dump, region, tags, name)
+    }
+    let mut keys: Vec<(Key<'_>, usize)> = releases
+        .iter()
+        .enumerate()
+        .map(|(i, r)| (key(r), i))
+        .collect();
+    keys.sort();
+    let (best, i) = keys[0];
+    let why = match keys.get(1) {
+        Some(((d, ..), _)) if *d != best.0 => match best.0 {
+            0 => "original before crack/trainer",
+            _ => "crack before trainer",
+        },
+        Some(((_, r, ..), _)) if *r != best.1 => "no country tag before a country",
+        Some(((_, _, t, _), _)) if *t != best.2 => "fewer tags",
+        _ => "name order",
+    };
+    (i, why)
 }
 
 fn excluded_by(f: &Flags, ex: &Flags) -> Option<&'static str> {

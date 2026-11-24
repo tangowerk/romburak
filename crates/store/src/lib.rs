@@ -3,6 +3,7 @@
 mod catalog;
 mod cheevos;
 mod chipset;
+mod conflicts;
 mod dat;
 mod dat_sync;
 mod disc;

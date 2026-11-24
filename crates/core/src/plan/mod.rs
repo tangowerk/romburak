@@ -3,6 +3,8 @@
 
 #[cfg(test)]
 mod archive_tests;
+#[cfg(test)]
+mod auto_tests;
 mod build;
 #[cfg(test)]
 mod daphne_tests;
@@ -145,6 +147,9 @@ pub struct Options {
     pub hashes: HashMap<PathBuf, [u8; 20]>,
     /// Library archives in an arcade core folder whose DAT doesn't know their name.
     pub misnamed: HashSet<PathBuf>,
+    /// Arcade zips in a conflict scored against the target core's DAT: (roms present, roms
+    /// needed). Filled by the store on a second planning pass (`auto_conflicts`).
+    pub dat_score: HashMap<PathBuf, (u32, u32)>,
     /// Inbox root; quarantined files keep their path below it (no clashes on equal names).
     pub inbox: Option<PathBuf>,
     /// Paths the user excluded: nothing at or below them is planned (left as is).

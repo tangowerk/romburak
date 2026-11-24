@@ -60,7 +60,15 @@ impl Builder<'_> {
         let key = (fg.system.to_owned(), g.name.clone());
         match self.opts.verdicts.get(&key) {
             Some(Verdict::Keep) => self.folder_game(root, fg),
-            Some(Verdict::Discard) => self.trash_folder(root, fg),
+            Some(Verdict::Discard) => {
+                self.why = Why::new(Rule::Verdict, "discarded (Duplicate)");
+                self.trash_folder(root, fg);
+            }
+            _ if self.opts.rules.auto_trash => {
+                let label = g1r::Reason::Duplicate.label();
+                self.why = Why::new(Rule::AutoTrash, format!("auto: {label}"));
+                self.trash_folder(root, fg);
+            }
             _ => {
                 let kept = kept.strip_prefix(self.library).unwrap_or(kept);
                 self.plan.decisions.push(Decision::Rejected {
@@ -98,7 +106,6 @@ impl Builder<'_> {
             ident: fg.item.ident.clone(),
             in_library: fg.item.in_library,
         };
-        self.why = Why::new(Rule::Verdict, "discarded (Duplicate)");
         if self.commit(&it, ops) {
             self.plan.discarded += 1;
         }

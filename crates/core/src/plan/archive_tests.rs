@@ -39,14 +39,19 @@ fn member(archive: &Path, name: &str, ident: Ident) -> Item {
 fn opts(mode: Mode) -> Options {
     Options {
         mode,
-        // these tests cover the quarantine; `unknown_to_trash` has its own test
+        // these tests cover the quarantine and the decision queue; `unknown_to_trash` and
+        // the automatics (`auto_tests`) have their own tests
         rules: crate::g1r::Rules {
             unknown_to_trash: false,
+            auto_ties: false,
+            auto_trash: false,
+            auto_conflicts: false,
             ..Default::default()
         },
         verdicts: Default::default(),
         hashes: Default::default(),
         misnamed: Default::default(),
+        dat_score: Default::default(),
         inbox: None,
         ignore: Vec::new(),
     }

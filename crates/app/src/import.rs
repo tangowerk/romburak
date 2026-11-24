@@ -177,7 +177,7 @@ pub async fn plan_import(
             ("planning", Progress { done: 0, total: 0 }),
         );
         let (hashes, misnamed) = store.duplicate_check(&lib).map_err(err)?;
-        let opts = Options {
+        let mut opts = Options {
             mode: mode.into(),
             rules: crate::settings::load_rules(&store)?,
             verdicts: store.verdicts().map_err(err)?,
@@ -185,8 +185,9 @@ pub async fn plan_import(
             ignore: store.ignored().map_err(err)?,
             hashes,
             misnamed,
+            dat_score: Default::default(),
         };
-        let p = plan::build(&items, &lib, &opts);
+        let p = store.plan(&items, &lib, &mut opts).map_err(err)?;
         store.set_rule_hits(&p.why).map_err(err)?;
         let left = match &inbox_root {
             Some(i) => Some((i.clone(), plan::inbox::leftovers(i, &p).map_err(err)?)),

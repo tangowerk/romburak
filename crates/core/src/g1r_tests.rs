@@ -138,3 +138,44 @@ fn atari_st_disk_parts_are_one_release() {
         ]
     );
 }
+
+#[test]
+fn auto_tie_prefers_original_then_crack_then_plain_region() {
+    fn pick(names: &[&'static str]) -> (&'static str, &'static str) {
+        let v: Vec<String> = names.iter().map(|s| (*s).to_owned()).collect();
+        let (i, why) = auto_tie(&v);
+        (names[i], why)
+    }
+    assert_eq!(
+        pick(&["180 [cr Section Jaguar]", "180"]),
+        ("180", "original before crack/trainer")
+    );
+    assert_eq!(
+        pick(&["Blasteroids [t]", "Blasteroids [cr Mc Spe]"]),
+        ("Blasteroids [cr Mc Spe]", "crack before trainer")
+    );
+    assert_eq!(
+        pick(&["Dick Tracy [cr XOR][t +2 XOR]", "Dick Tracy [cr XOR]"]).0,
+        "Dick Tracy [cr XOR]"
+    );
+    assert_eq!(
+        pick(&["Navy Moves [cr Agora - CSC]", "Navy Moves (Spain)"]).0,
+        "Navy Moves (Spain)"
+    );
+    assert_eq!(
+        pick(&["Arkanoid (Spain)", "Arkanoid"]),
+        ("Arkanoid", "no country tag before a country")
+    );
+    assert_eq!(
+        pick(&["Tetris (France)", "Tetris (World)"]).0,
+        "Tetris (World)"
+    );
+    assert_eq!(
+        pick(&["Horde, The (USA) (RCB)", "Horde, The (USA)"]),
+        ("Horde, The (USA)", "fewer tags")
+    );
+    assert_eq!(
+        pick(&["B (Spain)", "A (France)"]),
+        ("A (France)", "name order")
+    );
+}

@@ -81,7 +81,11 @@ impl Store {
     }
 
     /// [`Store::dat_set`] shared from the in-memory cache.
-    fn dat_set_rc(&self, system: &str, name: &str) -> Result<Option<std::rc::Rc<DatSet>>> {
+    pub(crate) fn dat_set_rc(
+        &self,
+        system: &str,
+        name: &str,
+    ) -> Result<Option<std::rc::Rc<DatSet>>> {
         let key = (system.to_owned(), name.to_owned());
         if let Some(hit) = self.dat_cache.borrow().get(&key) {
             return Ok(hit.clone());

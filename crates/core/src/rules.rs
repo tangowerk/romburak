@@ -22,10 +22,13 @@ pub enum Rule {
     Playlist,
     NameOnly,
     LibraryDuplicate,
+    AutoTie,
+    AutoTrash,
+    AutoConflict,
 }
 
 impl Rule {
-    pub const ALL: [Rule; 16] = [
+    pub const ALL: [Rule; 19] = [
         Rule::G1rPick,
         Rule::ArcadeSet,
         Rule::ArcadeDat,
@@ -42,6 +45,9 @@ impl Rule {
         Rule::Playlist,
         Rule::NameOnly,
         Rule::LibraryDuplicate,
+        Rule::AutoTie,
+        Rule::AutoTrash,
+        Rule::AutoConflict,
     ];
 
     pub fn id(self) -> &'static str {
@@ -62,6 +68,9 @@ impl Rule {
             Rule::Playlist => "playlist",
             Rule::NameOnly => "name-only",
             Rule::LibraryDuplicate => "library-duplicate",
+            Rule::AutoTie => "auto-tie",
+            Rule::AutoTrash => "auto-trash",
+            Rule::AutoConflict => "auto-conflict",
         }
     }
 
@@ -83,6 +92,9 @@ impl Rule {
             Rule::Playlist => "Old RetroArch playlist",
             Rule::NameOnly => "Identified by name",
             Rule::LibraryDuplicate => "Duplicate in the library",
+            Rule::AutoTie => "Tie decided",
+            Rule::AutoTrash => "1G1R loser to trash",
+            Rule::AutoConflict => "Conflict decided",
         }
     }
 
@@ -91,7 +103,7 @@ impl Rule {
             Rule::G1rPick => {
                 "One release per game: region order, then preferred language, then fewest variant \
                  flags (Alt, Beta, Proto…), newest revision. Excluded flags are never picked; \
-                 remaining ties become a decision."
+                 remaining ties are decided by \"Tie decided\" (or asked when it is off)."
             }
             Rule::ArcadeSet => {
                 "Arcade zips are matched as a whole and keep their short name. Sets are grouped by \
@@ -159,6 +171,26 @@ impl Rule {
                  folder's core knows under that file name, then the best arcade core (FBNeo, \
                  MAME, older MAME). Game folders, multi-disc folders, _bios and BIOS sets (one \
                  per core) are left alone."
+            }
+            Rule::AutoTie => {
+                "When no rule tells equal releases apart, one is picked without asking: the \
+                 original (no [...] flags) before a crack [cr], before trainers [t] and other \
+                 flags; no country tag or (World) before a country; fewer tags; then name \
+                 order. A release you preferred still wins."
+            }
+            Rule::AutoTrash => {
+                "Every release 1G1R did not pick – duplicates of the kept dump, other regions, \
+                 older revisions, alternatives, the loser of a tie – goes to _trash (undoable) \
+                 instead of waiting for a decision. Releases you marked keep are placed; games \
+                 where every release is excluded and releases identified by name only stay a \
+                 decision."
+            }
+            Rule::AutoConflict => {
+                "An arcade set or BIOS whose target already holds different content: both are \
+                 checked against the target core's DAT. The more complete copy stays (or \
+                 replaces the library copy, which goes to _trash), the other goes to _trash; \
+                 equally complete keeps the library copy. Conflicts without a DAT stay a \
+                 decision."
             }
         }
     }

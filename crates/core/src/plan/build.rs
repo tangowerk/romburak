@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 const UNKNOWN_TRASH: &str = "unknown";
 
 mod archives;
+mod conflict;
 mod daphne;
 mod dedupe;
 mod dup_folders;
@@ -249,6 +250,7 @@ pub fn build(items: &[Item], library: &Path, opts: &Options) -> Plan {
         let rules = opts.rules.for_system(system);
         for gp in g1r::select(list, |(_, g)| &g.name, &rules) {
             let tie = gp.needs_decision;
+            let mut auto_tie = None;
             let (mut picked, mut rejected) = (gp.picked, gp.rejected);
             if tie {
                 let rel = |g: &Game| naming::release_name(&g.name);
@@ -267,12 +269,20 @@ pub fn build(items: &[Item], library: &Path, opts: &Options) -> Plan {
                     opts.verdicts.get(&((*system).to_owned(), (*r).clone()))
                         == Some(&Verdict::Prefer)
                 });
-                let Some(preferred) = preferred.cloned() else {
-                    b.plan.decisions.push(Decision::Tie {
-                        system: (*system).to_owned(),
-                        releases,
-                    });
-                    continue;
+                let preferred = match preferred {
+                    Some(p) => p.clone(),
+                    None if rules.auto_ties => {
+                        let (i, why) = g1r::auto_tie(&releases);
+                        auto_tie = Some(why);
+                        releases[i].clone()
+                    }
+                    None => {
+                        b.plan.decisions.push(Decision::Tie {
+                            system: (*system).to_owned(),
+                            releases,
+                        });
+                        continue;
+                    }
                 };
                 let all: Vec<_> = picked
                     .drain(..)
@@ -287,18 +297,21 @@ pub fn build(items: &[Item], library: &Path, opts: &Options) -> Plan {
                     }
                 }
             }
-            b.why = Why::new(
-                if *by_name {
-                    Rule::NameOnly
-                } else {
-                    Rule::G1rPick
-                },
-                match (tie, picked.len()) {
-                    (true, _) => "preferred by you".into(),
-                    (_, n) if n > 1 => format!("{n} discs"),
-                    _ => String::new(),
-                },
-            );
+            b.why = match auto_tie {
+                Some(why) => Why::new(Rule::AutoTie, format!("auto: {why}")),
+                None => Why::new(
+                    if *by_name {
+                        Rule::NameOnly
+                    } else {
+                        Rule::G1rPick
+                    },
+                    match (tie, picked.len()) {
+                        (true, _) => "preferred by you".into(),
+                        (_, n) if n > 1 => format!("{n} discs"),
+                        _ => String::new(),
+                    },
+                ),
+            };
             b.release(system, &picked);
             let kept = picked.first().map(|(_, g)| g.name.clone());
             for ((it, g), reason) in &rejected {
@@ -323,6 +336,12 @@ pub fn build(items: &[Item], library: &Path, opts: &Options) -> Plan {
                     && let Files::Member { archive, .. } = &it.files
                 {
                     *b.members_done.entry(archive.clone()).or_default() += 1;
+                    continue;
+                }
+                // name-only matches are never trashed; nothing picked = the game would vanish
+                if rules.auto_trash && !*by_name && kept.is_some() {
+                    b.why = Why::new(Rule::AutoTrash, format!("auto: {}", reason.label()));
+                    b.discard(it);
                     continue;
                 }
                 b.plan.decisions.push(Decision::Rejected {
@@ -479,6 +498,10 @@ impl Builder<'_> {
                 }
                 Some(Verdict::Discard) => {
                     self.why = Why::new(Rule::Verdict, format!("discarded ({reason:?})"));
+                    self.discard(it);
+                }
+                _ if self.opts.rules.auto_trash => {
+                    self.why = Why::new(Rule::AutoTrash, format!("auto: {}", reason.label()));
                     self.discard(it);
                 }
                 _ => self.plan.decisions.push(Decision::Rejected {
@@ -695,10 +718,20 @@ impl Builder<'_> {
         };
         let key = (g.system.clone(), g.name.clone());
         // single files only; a duplicate game folder is left for you to remove
-        if n_ops == 1 && self.opts.verdicts.get(&key) == Some(&Verdict::Discard) {
-            self.why = Why::new(Rule::Verdict, "discarded (Duplicate)");
-            self.discard(it);
-            return;
+        if n_ops == 1 {
+            let verdict = self.opts.verdicts.get(&key) == Some(&Verdict::Discard);
+            if verdict || self.opts.rules.auto_trash {
+                self.why = if verdict {
+                    Why::new(Rule::Verdict, "discarded (Duplicate)")
+                } else {
+                    Why::new(
+                        Rule::AutoTrash,
+                        format!("auto: {}", g1r::Reason::Duplicate.label()),
+                    )
+                };
+                self.discard(it);
+                return;
+            }
         }
         self.plan.decisions.push(Decision::Rejected {
             path: it.files.primary().clone(),
@@ -723,9 +756,13 @@ impl Builder<'_> {
                 self.duplicate(it, ops.len(), kept);
                 return false;
             }
+            let target = op.target().to_path_buf();
+            if let Some(done) = self.auto_conflict(it, &ops, &target) {
+                return done;
+            }
             self.plan.decisions.push(Decision::Conflict {
                 path: it.files.primary().clone(),
-                target: op.target().to_path_buf(),
+                target,
             });
             return false;
         }

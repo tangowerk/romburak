@@ -26,10 +26,17 @@ fn known(dir: &Path, file: &str, name: &str) -> Item {
 fn opts(rules: Rules) -> Options {
     Options {
         mode: Mode::Copy,
-        rules,
+        // the automatics have their own tests (`auto_tests`)
+        rules: Rules {
+            auto_ties: false,
+            auto_trash: false,
+            auto_conflicts: false,
+            ..rules
+        },
         verdicts: Default::default(),
         hashes: Default::default(),
         misnamed: Default::default(),
+        dat_score: Default::default(),
         inbox: None,
         ignore: Vec::new(),
     }
