@@ -25,7 +25,7 @@ pub fn ra_video() -> CmdResult<VideoView> {
 }
 
 /// Shader presets of `shaders_slang`; downloads the package first if RetroArch has none
-/// (progress on `ra://package` in MB).
+/// (progress on `ra://package`: phase download/unpack, MB, "").
 #[tauri::command]
 pub async fn ra_shaders(app: tauri::AppHandle) -> CmdResult<Vec<String>> {
     tauri::async_runtime::spawn_blocking(move || {
@@ -35,7 +35,13 @@ pub async fn ra_shaders(app: tauri::AppHandle) -> CmdResult<Vec<String>> {
                 done: (done >> 20) as usize,
                 total: (total.unwrap_or(0) >> 20) as usize,
             };
-            let _ = app.emit("ra://package", p);
+            // unpacking follows the finished download and reports nothing itself
+            let phase = if total.is_some_and(|t| t > 0 && done >= t) {
+                "unpack"
+            } else {
+                "download"
+            };
+            let _ = app.emit("ra://package", (phase, p, ""));
         };
         m.ensure_package("shaders_slang", &romburak_store::http_download, &progress)
             .map_err(err)?;

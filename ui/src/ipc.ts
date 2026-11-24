@@ -872,7 +872,7 @@ export async function raVideo(): Promise<RaVideo> {
 /** Shader presets (`shaders_slang`); downloads the package first if RetroArch has none. */
 export async function raShaders(): Promise<string[]> {
   if (!inTauri) {
-    await new Promise((r) => setTimeout(r, 400));
+    await mockProgress("ra://package", ["download"], phased);
     return ["crt/crt-royale.slangp", "crt/crt-lottes.slangp", "crt/crt-geom.slangp", "handheld/lcd-grid-v2.slangp",
       "presets/crt-royale-smooth.slangp", "scanlines/scanline.slangp", "xbrz/xbrz-freescale.slangp"];
   }

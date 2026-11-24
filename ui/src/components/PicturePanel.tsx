@@ -2,6 +2,7 @@
 import { createMemo, createResource, createSignal, For, onCleanup, Show } from "solid-js";
 import Pager, { createPaged } from "./Pager";
 import Panel from "./Panel";
+import PhaseProgress from "./PhaseProgress";
 import Select from "./Select";
 import { onPlayEnded, raRunning, raSetAspect, raSetShader, raShaders, raVideo } from "../ipc";
 
@@ -69,7 +70,15 @@ export default function PicturePanel() {
         </Show>
       </div>
       <Show when={load()}>
-        <Show when={!presets.loading} fallback={<p class="dim small">Loading shaders (first time: downloading the slang shader package, ~55 MB)…</p>}>
+        <Show
+          when={!presets.loading}
+          fallback={
+            <>
+              <p class="dim small">Loading shaders (first time: downloading the slang shader package, ~55 MB)…</p>
+              <PhaseProgress event="ra://package" labels={{ download: "downloading (MB)", unpack: "unpacking" }} />
+            </>
+          }
+        >
           <Show when={!presets.error} fallback={<p class="err small">{String(presets.error)}</p>}>
             <input
               class="field preset-search"
