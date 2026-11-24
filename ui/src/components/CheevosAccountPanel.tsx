@@ -33,9 +33,18 @@ export default function CheevosAccountPanel(props: { onChange: () => void }) {
     changed();
   };
   const saveKey = async () => {
-    await cheevosSetKey(key());
-    setKey("");
-    changed();
+    setBusy(true);
+    setMsg("");
+    try {
+      await cheevosSetKey(key());
+      setKey("");
+      setMsg("Key works and is saved.");
+      changed();
+    } catch (e) {
+      setMsg(String(e));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -106,12 +115,12 @@ export default function CheevosAccountPanel(props: { onChange: () => void }) {
           value={key()}
           onInput={(e) => setKey(e.currentTarget.value)}
         />
-        <button class="btn" classList={{ ghost: !!status()?.has_key }} type="submit" disabled={!key().trim()}>
-          Save key
+        <button class="btn" classList={{ ghost: !!status()?.has_key }} type="submit" disabled={busy() || !key().trim()}>
+          {busy() ? "Checking…" : "Save key"}
         </button>
       </form>
       <Show when={msg()}>
-        <p class="err small">{msg()}</p>
+        <p class="small" classList={{ err: !msg().startsWith("Key works") }}>{msg()}</p>
       </Show>
     </Panel>
   );

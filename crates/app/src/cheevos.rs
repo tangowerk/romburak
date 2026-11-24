@@ -38,9 +38,21 @@ pub async fn cheevos_status() -> CmdResult<Status> {
 }
 
 #[tauri::command]
+/// Stores the Web API key after asking RA whether it works: a refused key is not stored;
+/// when RA can't be reached the key is kept (the status shows the error later).
 pub async fn cheevos_set_key(key: String) -> CmdResult<()> {
-    let (store, _) = open_store()?;
-    store.set_setting(KEY, key.trim()).map_err(err)
+    tauri::async_runtime::spawn_blocking(move || {
+        let key = key.trim();
+        if let Err(e) = romburak_store::ra_check_key(key)
+            && e.to_string() == romburak_store::KEY_REJECTED
+        {
+            return Err(e.to_string());
+        }
+        let (store, _) = open_store()?;
+        store.set_setting(KEY, key).map_err(err)
+    })
+    .await
+    .map_err(err)?
 }
 
 /// Logs in (the password is only sent, never stored) and writes the token into the

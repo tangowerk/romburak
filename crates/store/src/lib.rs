@@ -23,7 +23,9 @@ pub use play::{MIN_PLAY_SECS, PlayStats};
 pub use ra_account::ra_login;
 pub use ra_players::RaPlayersReport;
 pub use ra_progress::RaProgress;
-pub use ra_status::{RaCounts, RaLogin, RaSummary, RaUnlock, ra_check_login, ra_summary};
+pub use ra_status::{
+    KEY_REJECTED, RaCounts, RaLogin, RaSummary, RaUnlock, ra_check_key, ra_check_login, ra_summary,
+};
 pub use rdb_fetch::update_rdbs;
 mod record;
 mod schema;

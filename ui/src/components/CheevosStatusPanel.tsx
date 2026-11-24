@@ -8,7 +8,7 @@ const raDate = (s: string) => {
   return Number.isNaN(d.getTime()) ? s : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 };
 
-function Light<T>(props: { label: string; check: RaCheck<T> | null; missing: string }) {
+function Light(props: { label: string; check: RaCheck<unknown> | null; missing: string; works?: string }) {
   const state = () => (!props.check ? "off" : props.check.ok ? "ok" : "bad");
   return (
     <li class={`light ${state()}`}>
@@ -16,7 +16,7 @@ function Light<T>(props: { label: string; check: RaCheck<T> | null; missing: str
       <span>
         <strong>{props.label}</strong>{" "}
         <span class="dim small">
-          {state() === "ok" ? "works" : state() === "off" ? props.missing : props.check?.error}
+          {state() === "ok" ? (props.works ?? "works") : state() === "off" ? props.missing : props.check?.error}
         </span>
       </span>
     </li>
@@ -63,8 +63,9 @@ export default function CheevosStatusPanel(props: { live: Resource<CheevosLive>;
         <Light label="Login" check={props.live()?.login ?? null} missing="not logged in" />
         <Light
           label="Web API key"
-          check={props.live()?.key ?? null}
-          missing={props.live()?.login ? "no key stored" : "log in first"}
+          check={props.live()?.key ?? props.live()?.key_only ?? null}
+          missing="no key stored"
+          works={props.live()?.key ? "works" : "works (log in to see your profile)"}
         />
         <li class="dim small">last successful check: {lastOk()}</li>
       </ul>

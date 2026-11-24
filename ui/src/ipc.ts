@@ -1086,8 +1086,10 @@ export interface RaCounts { consoles: number; games: number; files: number; file
 export interface CheevosLive {
   /** null = not logged in */
   login: RaCheck<RaLogin> | null;
-  /** null = no Web API key (or not logged in, so no user to ask for) */
+  /** null = no Web API key, or not logged in (then see key_only) */
   key: RaCheck<RaSummary> | null;
+  /** key checked on its own without login: number of active RA consoles */
+  key_only: RaCheck<number> | null;
   /** unix seconds of the last check where login and key both worked */
   last_ok: number | null;
   counts: RaCounts;
@@ -1098,7 +1100,7 @@ export async function cheevosLive(): Promise<CheevosLive> {
   if (!inTauri) {
     await new Promise((r) => setTimeout(r, 400));
     const counts = { consoles: 41, games: 7737, files: 9083, files_with: 2685 };
-    if (!mockRaUser) return { login: null, key: null, last_ok: null, counts };
+    if (!mockRaUser) return { login: null, key: null, key_only: { ok: 52, error: null }, last_ok: null, counts };
     const badge = (n: number) => `https://media.retroachievements.org/Badge/${n}.png`;
     return {
       login: { ok: { user: mockRaUser, avatar_url: "", score: 1240, softcore_score: 85 }, error: null },
@@ -1120,6 +1122,7 @@ export async function cheevosLive(): Promise<CheevosLive> {
         },
         error: null,
       },
+      key_only: null,
       last_ok: Date.now() / 1000,
       counts,
     };

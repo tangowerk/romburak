@@ -11,6 +11,7 @@ use std::io;
 
 const LOGIN: &str = "https://retroachievements.org/dorequest.php";
 const SUMMARY: &str = "https://retroachievements.org/API/API_GetUserSummary.php";
+const CONSOLES: &str = "https://retroachievements.org/API/API_GetConsoleIDs.php";
 const MEDIA: &str = "https://media.retroachievements.org";
 const OPTION: &str = "ra.opt.";
 
@@ -91,16 +92,28 @@ pub struct RaSummary {
     pub recent: Vec<RaUnlock>,
 }
 
+/// Error text for a key RA refuses (HTTP 401).
+pub const KEY_REJECTED: &str = "Web API key rejected – check it on retroachievements.org";
+
+fn key_error(e: io::Error) -> io::Error {
+    if e.to_string().contains("401") {
+        io::Error::other(KEY_REJECTED)
+    } else {
+        e
+    }
+}
+
+/// Checks a Web API key on its own (no user name needed); returns the number of active consoles.
+pub fn ra_check_key(api_key: &str) -> io::Result<usize> {
+    let body = http_get(&format!("{CONSOLES}?y={api_key}&a=1")).map_err(key_error)?;
+    let list: Vec<serde_json::Value> = serde_json::from_slice(&body).map_err(io::Error::other)?;
+    Ok(list.len())
+}
+
 /// Profile and the newest unlocks (`n` at most) of `user`.
 pub fn ra_summary(user: &str, api_key: &str, n: usize) -> io::Result<RaSummary> {
     let url = format!("{SUMMARY}?u={user}&y={api_key}&g=5&a={n}");
-    let body = http_get(&url).map_err(|e| {
-        if e.to_string().contains("401") {
-            io::Error::other("Web API key rejected – check it on retroachievements.org")
-        } else {
-            e
-        }
-    })?;
+    let body = http_get(&url).map_err(key_error)?;
     parse_summary(&body, n)
 }
 

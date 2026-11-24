@@ -39,8 +39,10 @@ fn fine<T>(c: &Option<Check<T>>) -> bool {
 pub struct Live {
     /// `None` = not logged in
     login: Option<Check<RaLogin>>,
-    /// `None` = no Web API key (or no user name to ask for)
+    /// `None` = no Web API key or not logged in (no user name to ask for)
     key: Option<Check<RaSummary>>,
+    /// key checked on its own when there is no login: number of active RA consoles
+    key_only: Option<Check<usize>>,
     /// unix seconds of the last fully successful check (also from before)
     last_ok: Option<i64>,
     counts: RaCounts,
@@ -61,6 +63,10 @@ pub async fn cheevos_live() -> CmdResult<Live> {
             (Some(k), Some(u)) => Some(Check::from(romburak_store::ra_summary(u, k, 5))),
             _ => None,
         };
+        let key_only = match (&key, &user) {
+            (Some(k), None) => Some(Check::from(romburak_store::ra_check_key(k))),
+            _ => None,
+        };
         if fine(&login) && fine(&summary) {
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -71,6 +77,7 @@ pub async fn cheevos_live() -> CmdResult<Live> {
         Ok(Live {
             login,
             key: summary,
+            key_only,
             last_ok: store
                 .setting(LAST_OK)
                 .map_err(err)?
