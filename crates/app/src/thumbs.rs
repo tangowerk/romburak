@@ -116,7 +116,36 @@ pub async fn thumbnail(system: String, name: String, kind: String) -> CmdResult<
     .map_err(err)?
 }
 
-/// `thumb://localhost/<kind>/<system>/<name>` or `state/<screenshot path>` (one percent-encoded segment, as built by
+/// Shader preview `<id>.webp` / `<id>-detail.webp` from the repo's `shader-thumbs/` (content-addressed,
+/// so a cached file never goes stale); `None` if the id is malformed, missing or offline.
+fn shader_thumb(file: &str) -> CmdResult<Option<Vec<u8>>> {
+    let id = file.strip_suffix(".webp").unwrap_or(file);
+    let hash = id.strip_suffix("-detail").unwrap_or(id);
+    if hash.len() != 12 || !hash.bytes().all(|b| b.is_ascii_hexdigit()) || file == id {
+        return Ok(None);
+    }
+    let base = romburak_core::paths::cache().ok_or("no cache directory")?;
+    let path = base.join("shader-thumbs").join(file);
+    if let Ok(b) = std::fs::read(&path) {
+        return Ok(Some(b));
+    }
+    if !online()? {
+        return Ok(None);
+    }
+    let Some(bytes) = download(&format!("{SHADER_THUMBS_URL}/{file}"))? else {
+        return Ok(None);
+    };
+    std::fs::create_dir_all(base.join("shader-thumbs")).map_err(err)?;
+    let tmp = path.with_extension("part");
+    std::fs::write(&tmp, &bytes).map_err(err)?;
+    std::fs::rename(&tmp, &path).map_err(err)?;
+    Ok(Some(bytes))
+}
+
+const SHADER_THUMBS_URL: &str =
+    "https://raw.githubusercontent.com/tangowerk/romburak/main/shader-thumbs";
+
+/// `thumb://localhost/<kind>/<system>/<name>`, `shader/<id>[-detail].webp` or `state/<screenshot path>` (one percent-encoded segment, as built by
 /// `convertFileSrc`): PNG, or 404 so the UI shows its placeholder. Lets the webview lazy-load
 /// and cache grid tiles itself.
 pub fn protocol(request: tauri::http::Request<Vec<u8>>, responder: tauri::UriSchemeResponder) {
@@ -124,8 +153,12 @@ pub fn protocol(request: tauri::http::Request<Vec<u8>>, responder: tauri::UriSch
     tauri::async_runtime::spawn_blocking(move || {
         let decoded = percent_encoding::percent_decode_str(&path).decode_utf8_lossy();
         let mut parts = decoded.splitn(3, '/');
+        let mut mime = "image/png";
         let found = if let Some(file) = decoded.strip_prefix("state/") {
             crate::states::screenshot(file)
+        } else if let Some(file) = decoded.strip_prefix("shader/") {
+            mime = "image/webp";
+            shader_thumb(file).ok().flatten()
         } else {
             match (
                 parts.next().and_then(Kind::parse),
@@ -140,7 +173,7 @@ pub fn protocol(request: tauri::http::Request<Vec<u8>>, responder: tauri::UriSch
             .header("Access-Control-Allow-Origin", "*")
             .header("Cache-Control", "max-age=3600");
         let res = match found {
-            Some(png) => res.header("Content-Type", "image/png").body(png),
+            Some(img) => res.header("Content-Type", mime).body(img),
             None => res.status(404).body(Vec::new()),
         };
         responder.respond(res.unwrap_or_default());

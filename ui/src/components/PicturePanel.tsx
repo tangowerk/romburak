@@ -4,8 +4,22 @@ import Pager, { createPaged } from "./Pager";
 import Panel from "./Panel";
 import PhaseProgress from "./PhaseProgress";
 import Select from "./Select";
-import { onPlayEnded, raRunning, raSetAspect, raSetShader, raShaders, raVideo } from "../ipc";
+import { onPlayEnded, raRunning, raSetAspect, raSetShader, raShaders, raVideo, shaderThumbUrl, type ShaderPreset } from "../ipc";
 import { SHADER_CATEGORIES, shaderCategory } from "../shaderCategories";
+
+const SORTS = [
+  { value: "name", label: "Name" },
+  { value: "added", label: "Newest", hint: "added to slang-shaders" },
+  { value: "changed", label: "Recently changed" },
+  { value: "passes", label: "Fewest passes", hint: "lightest on the GPU" },
+];
+
+const bySort: Record<string, (a: ShaderPreset, b: ShaderPreset) => number> = {
+  name: (a, b) => a.path.localeCompare(b.path),
+  added: (a, b) => (b.added ?? "").localeCompare(a.added ?? ""),
+  changed: (a, b) => (b.changed ?? "").localeCompare(a.changed ?? ""),
+  passes: (a, b) => (a.passes ?? 99) - (b.passes ?? 99),
+};
 
 const ASPECTS = [
   { value: "", label: "RetroArch decides", hint: "its own menu setting" },
@@ -32,6 +46,9 @@ export default function PicturePanel() {
   onCleanup(() => (clearInterval(poll), void unlisten.then((f) => f())));
   const [query, setQuery] = createSignal("");
   const [category, setCategory] = createSignal("");
+  const [sort, setSort] = createSignal("name");
+  // preset shown in the large preview: the hovered row, else the active shader
+  const [hovered, setHovered] = createSignal<ShaderPreset | null>(null);
   const categoryOptions = createMemo(() => {
     const counts = new Map<string, number>();
     for (const p of presets() ?? []) counts.set(shaderCategory(p.path), (counts.get(shaderCategory(p.path)) ?? 0) + 1);
@@ -43,12 +60,17 @@ export default function PicturePanel() {
   const [msg, setMsg] = createSignal("");
   const matches = createMemo(() => {
     const words = query().toLowerCase().split(/\s+/).filter(Boolean);
-    return (presets() ?? []).filter(
-      (p) =>
-        (!category() || shaderCategory(p.path) === category()) && words.every((w) => p.path.toLowerCase().includes(w)),
-    );
+    const cmp = bySort[sort()] ?? bySort.name!;
+    return (presets() ?? [])
+      .filter(
+        (p) =>
+          (!category() || shaderCategory(p.path) === category()) &&
+          words.every((w) => p.path.toLowerCase().includes(w) || (p.author ?? "").toLowerCase().includes(w)),
+      )
+      .sort((a, b) => cmp(a, b) || a.path.localeCompare(b.path));
   });
-  const paged = createPaged(matches, () => 12);
+  const paged = createPaged(matches, () => 10);
+  const preview = () => hovered() ?? (presets() ?? []).find((p) => p.path === shader()) ?? null;
   const run = async (f: () => Promise<unknown>, ok: string) => {
     try {
       const live = await f();
@@ -103,6 +125,7 @@ export default function PicturePanel() {
           <Show when={!presets.error} fallback={<p class="err small">{String(presets.error)}</p>}>
             <div class="row">
               <Select value={category()} options={categoryOptions()} onChange={setCategory} />
+              <Select value={sort()} options={SORTS} onChange={setSort} />
               <input
                 class="field preset-search"
                 type="search"
@@ -114,7 +137,8 @@ export default function PicturePanel() {
             <Show when={category()}>
               <p class="dim small">{SHADER_CATEGORIES[category()] ?? ""}</p>
             </Show>
-            <ul class="preset-list">
+            <ShaderPreview preset={preview()} />
+            <ul class="preset-list" onMouseLeave={() => setHovered(null)}>
               <For each={paged.items()}>
                 {(p) => (
                   <li>
@@ -122,9 +146,17 @@ export default function PicturePanel() {
                       class="preset mono small"
                       classList={{ sel: shader() === p.path }}
                       title={SHADER_CATEGORIES[shaderCategory(p.path)] ?? ""}
+                      onMouseEnter={() => setHovered(p)}
+                      onFocus={() => setHovered(p)}
                       onClick={() => void run(() => raSetShader(p.path), `Shader: ${p.path}`)}
                     >
-                      <span>{p.path.replace(/\.slangp$/, "")}</span>
+                      <Show when={p.thumb} fallback={<span class="preset-thumb" />}>
+                        {(id) => <img class="preset-thumb" src={shaderThumbUrl(id())} alt="" loading="lazy" />}
+                      </Show>
+                      <span class="preset-name">{p.path.replace(/\.slangp$/, "")}</span>
+                      <Show when={p.added}>
+                        {(d) => <span class="preset-date dim" title={`added ${d()}, last changed ${p.changed}`}>{d().slice(0, 4)}</span>}
+                      </Show>
                       <Show when={p.passes}>
                         {(n) => (
                           <span class="preset-passes dim" title="Shader passes: more passes = more GPU load">
@@ -143,5 +175,47 @@ export default function PicturePanel() {
       </Show>
       <Show when={msg()}><p class="dim small">{msg()}</p></Show>
     </Panel>
+  );
+}
+
+/** Large preview of a preset: whole picture (curvature, bezel) next to a 1:1 detail (scanlines, mask).
+ *  Always the same height, so hovering rows never moves the list. */
+function ShaderPreview(props: { preset: ShaderPreset | null }) {
+  return (
+    <figure class="shader-preview">
+      <div class="shader-preview-pics">
+        <Show
+          when={props.preset?.thumb}
+          fallback={
+            <div class="shader-preview-none dim small">
+              {props.preset ? "No preview for this preset" : "Point at a preset to preview it"}
+            </div>
+          }
+        >
+          {(id) => (
+            <>
+              <img src={shaderThumbUrl(id())} alt="whole picture" />
+              <img src={shaderThumbUrl(id(), true)} alt="detail at 1:1" />
+            </>
+          )}
+        </Show>
+      </div>
+      <figcaption class="small">
+        <Show when={props.preset} fallback={<span class="dim">Test picture: whole screen · detail at 1:1</span>}>
+          {(p) => (
+            <>
+              <strong class="mono">{p().path.replace(/\.slangp$/, "")}</strong>
+              <Show when={p().added}>
+                <span class="dim">
+                  {" "}· added {p().added} by {p().author}
+                  <Show when={p().changed !== p().added}> · changed {p().changed}</Show>
+                </span>
+              </Show>
+              <Show when={p().passes}>{(n) => <span class="dim"> · {n()} {n() === 1 ? "pass" : "passes"}</span>}</Show>
+            </>
+          )}
+        </Show>
+      </figcaption>
+    </figure>
   );
 }

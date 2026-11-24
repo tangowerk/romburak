@@ -869,15 +869,41 @@ export async function raVideo(): Promise<RaVideo> {
   return invoke<RaVideo>("ra_video");
 }
 
-/** A shader preset: path below `shaders_slang`, pass count as GPU-load hint (null = unknown). */
-export interface ShaderPreset { path: string; passes: number | null }
+/** A shader preset: path below `shaders_slang`, pass count as GPU-load hint (null = unknown),
+ *  history from the bundled slang-shaders index and preview id (null = newer than the snapshot). */
+export interface ShaderPreset {
+  path: string;
+  passes: number | null;
+  /** YYYY-MM-DD */
+  added: string | null;
+  changed: string | null;
+  /** Who added the preset to slang-shaders (often the porter). */
+  author: string | null;
+  thumb: string | null;
+}
+
+const SHADER_THUMBS = "https://raw.githubusercontent.com/tangowerk/romburak/main/shader-thumbs";
+
+/** Shader preview: whole picture or the 1:1 detail crop (cached by the backend; 404 if none). */
+export function shaderThumbUrl(id: string, detail = false): string {
+  const file = `${id}${detail ? "-detail" : ""}.webp`;
+  return inTauri ? convertFileSrc(`shader/${file}`, "thumb") : `${SHADER_THUMBS}/${file}`;
+}
 
 /** Shader presets (`shaders_slang`); downloads the package first if RetroArch has none. */
 export async function raShaders(): Promise<ShaderPreset[]> {
   if (!inTauri) {
     await mockProgress("ra://package", ["download"], phased);
-    return ["crt/crt-royale.slangp", "crt/crt-lottes.slangp", "crt/crt-geom.slangp", "handheld/lcd-grid-v2.slangp",
-      "presets/crt-royale-smooth.slangp", "scanlines/scanline.slangp", "xbrz/xbrz-freescale.slangp"].map((path, i) => ({ path, passes: [12, 3, 2, 4, 1, 1, 2][i] ?? 1 }));
+    const mock: [string, number, string, string, string, string | null][] = [
+      ["crt/crt-royale.slangp", 12, "2016-08-19", "2023-02-24", "hunterk", null],
+      ["crt/crt-lottes.slangp", 3, "2016-07-31", "2021-06-14", "hunterk", null],
+      ["crt/crt-geom.slangp", 2, "2016-07-12", "2023-03-20", "hunterk", null],
+      ["handheld/lcd-grid-v2.slangp", 4, "2016-08-03", "2016-08-03", "hunterk", null],
+      ["presets/crt-royale-smooth.slangp", 1, "2020-02-11", "2022-09-01", "Duimon", null],
+      ["scanlines/scanline.slangp", 1, "2016-07-12", "2016-07-12", "hunterk", null],
+      ["xbrz/xbrz-freescale.slangp", 2, "2018-01-02", "2019-05-04", "hunterk", null],
+    ];
+    return mock.map(([path, passes, added, changed, author, thumb]) => ({ path, passes, added, changed, author, thumb }));
   }
   return invoke<ShaderPreset[]>("ra_shaders");
 }
