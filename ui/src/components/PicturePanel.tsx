@@ -18,7 +18,13 @@ const ASPECTS = [
 export default function PicturePanel() {
   const [video, { refetch }] = createResource(raVideo);
   const [load, setLoad] = createSignal(false);
-  const [presets] = createResource(load, () => raShaders());
+  // Bounded wait: a call that never answers shows an error with a retry instead of loading forever.
+  const [presets, { refetch: refetchPresets }] = createResource(load, () =>
+    Promise.race([
+      raShaders(),
+      new Promise<never>((_, fail) => setTimeout(() => fail(new Error("no answer from the backend after 5 min")), 300_000)),
+    ]),
+  );
   const [running, { refetch: refetchRunning }] = createResource(raRunning);
   const poll = setInterval(() => void refetchRunning(), 3000);
   const unlisten = onPlayEnded(() => void refetchRunning());
@@ -65,8 +71,10 @@ export default function PicturePanel() {
         <button class="btn ghost small" disabled={shader() === null} onClick={() => void run(() => raSetShader(null), "Shader left to RetroArch")}>
           RetroArch decides
         </button>
-        <Show when={!load()}>
-          <button class="btn small" onClick={() => setLoad(true)}>Choose preset…</button>
+        <Show when={!load() || presets.error}>
+          <button class="btn small" onClick={() => (load() ? void refetchPresets() : setLoad(true))}>
+            {presets.error ? "Retry" : "Choose preset…"}
+          </button>
         </Show>
       </div>
       <Show when={load()}>
@@ -74,7 +82,7 @@ export default function PicturePanel() {
           when={!presets.loading}
           fallback={
             <>
-              <p class="dim small">Loading shaders (first time: downloading the slang shader package, ~55 MB)…</p>
+              <p class="dim small">Loading shaders (only without bundled shaders: downloading the slang package, ~55 MB)…</p>
               <PhaseProgress event="ra://package" labels={{ download: "downloading (MB)", unpack: "unpacking" }} />
             </>
           }
