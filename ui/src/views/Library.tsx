@@ -24,11 +24,13 @@ const savedMode = (): "list" | "grid" => {
     return "list";
   }
 };
-type Key = "favorite" | "system" | "name" | "state" | "year" | "seconds" | "cheevos" | "cheevos_players" | "last_played" | "added";
+type Key = "favorite" | "system" | "name" | "state" | "year" | "developer" | "publisher" | "seconds" | "cheevos" | "cheevos_players" | "last_played" | "added";
 const SORTS: { value: Key; label: string }[] = [
   { value: "system", label: "Sort: system" },
   { value: "name", label: "Sort: name" },
   { value: "year", label: "Sort: release year" },
+  { value: "developer", label: "Sort: studio" },
+  { value: "publisher", label: "Sort: publisher" },
   { value: "last_played", label: "Sort: last played" },
   { value: "seconds", label: "Sort: play time" },
   { value: "added", label: "Sort: recently added" },
@@ -41,6 +43,8 @@ const COLS: { key: Key; label: string }[] = [
   { key: "system", label: "System" },
   { key: "name", label: "Name" },
   { key: "year", label: "Year" },
+  { key: "developer", label: "Studio" },
+  { key: "publisher", label: "Publisher" },
   { key: "seconds", label: "Played" },
   { key: "cheevos", label: "🏆" },
   { key: "cheevos_players", label: "Rank" },
@@ -63,13 +67,14 @@ export default function Library(props: { onSettings: () => void }) {
   const view = createMemo(() => {
     const { key, asc } = sort();
     const f = [...filter.filtered()];
-    // rows without a system (unknown files), and without a year when sorting by it, stay at
-    // the end in both directions
-    const noYear = (r: LibraryRow) => +(key === "year" && !r.year);
+    // rows without a system (unknown files), and without the value of an optional database
+    // column when sorting by it, stay at the end in both directions
+    const optional = key === "year" || key === "developer" || key === "publisher";
+    const missing = (r: LibraryRow) => +(optional && !r[key]);
     return f.sort(
       (a, b) =>
         +!a.system - +!b.system ||
-        noYear(a) - noYear(b) ||
+        missing(a) - missing(b) ||
         (asc ? 1 : -1) * cmp(a, b, key) ||
         a.name.localeCompare(b.name),
     );
@@ -201,6 +206,8 @@ export default function Library(props: { onSettings: () => void }) {
                         <span class="ellipsis">{r().name}</span>
                       </span>
                       <span class="dim">{r().year ?? ""}</span>
+                      <span class="ellipsis dim" title={r().developer ?? ""}>{r().developer ?? ""}</span>
+                      <span class="ellipsis dim" title={r().publisher ?? ""}>{r().publisher ?? ""}</span>
                       <span class="dim">{r().seconds ? formatPlayTime(r().seconds) : ""}</span>
                       <span
                         class="dim"

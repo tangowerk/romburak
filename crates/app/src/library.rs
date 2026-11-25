@@ -36,6 +36,10 @@ pub struct Row {
     year: Option<u16>,
     /// Franchise from the RetroArch database, when known.
     franchise: Option<String>,
+    /// Developer (studio) from the RetroArch database, when known.
+    developer: Option<String>,
+    /// Publisher from the RetroArch database, when known.
+    publisher: Option<String>,
 }
 
 fn added(p: &std::path::Path) -> i64 {
@@ -268,7 +272,12 @@ pub async fn library_list(
                     let y = store.release_meta(&system).unwrap_or_default();
                     years.insert(system.clone(), y);
                 }
-                let (year, franchise) = years
+                let romburak_store::ReleaseMeta {
+                    year,
+                    franchise,
+                    developer,
+                    publisher,
+                } = years
                     .get(&system)
                     .and_then(|y| y.get(&name))
                     .cloned()
@@ -276,6 +285,8 @@ pub async fn library_list(
                 Row {
                     year,
                     franchise,
+                    developer,
+                    publisher,
                     cheevos_players: cheevos_game
                         .filter(|_| cheevos > 0)
                         .and_then(|g| ra.players(g)),

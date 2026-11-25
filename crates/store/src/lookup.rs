@@ -65,7 +65,8 @@ impl Store {
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
-    /// Release year per game name of `system` (earliest when entries disagree).
+    /// Release year, franchise, developer and publisher per game name of `system` (earliest
+    /// year when entries disagree).
     pub fn release_meta(
         &self,
         system: &str,
@@ -73,19 +74,33 @@ impl Store {
         let mut stmt = self.conn.prepare_cached(
             "SELECT name,
                     MIN(CASE WHEN release_year BETWEEN 1950 AND 2100 THEN release_year END),
-                    MAX(NULLIF(franchise, ''))
+                    MAX(NULLIF(franchise, '')),
+                    MAX(NULLIF(developer, '')),
+                    MAX(NULLIF(publisher, ''))
              FROM entry WHERE system = ?1 GROUP BY name
-             HAVING COUNT(release_year) + COUNT(NULLIF(franchise, '')) > 0",
+             HAVING COUNT(release_year) + COUNT(NULLIF(franchise, ''))
+                  + COUNT(NULLIF(developer, '')) + COUNT(NULLIF(publisher, '')) > 0",
         )?;
         let rows = stmt.query_map([system], |r| {
             Ok((
                 r.get(0)?,
-                (r.get::<_, Option<i64>>(1)?.map(|y| y as u16), r.get(2)?),
+                ReleaseMeta {
+                    year: r.get::<_, Option<i64>>(1)?.map(|y| y as u16),
+                    franchise: r.get(2)?,
+                    developer: r.get(3)?,
+                    publisher: r.get(4)?,
+                },
             ))
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 }
 
-/// Release year and franchise of a database game name.
-pub type ReleaseMeta = (Option<u16>, Option<String>);
+/// Release facts of a database game name (each `None` when no entry has it).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ReleaseMeta {
+    pub year: Option<u16>,
+    pub franchise: Option<String>,
+    pub developer: Option<String>,
+    pub publisher: Option<String>,
+}

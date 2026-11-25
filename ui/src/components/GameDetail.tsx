@@ -71,6 +71,8 @@ export default function GameDetail(props: { row: LibraryRow }) {
           <dt>System</dt><dd>{props.row.system || "–"}</dd>
           <dt>State</dt><dd class={`tag-${props.row.state}`}>{props.row.state}</dd>
           <dt>Released</dt><dd>{props.row.year ?? "–"}</dd>
+          <dt>Studio</dt><dd>{props.row.developer ?? "–"}</dd>
+          <dt>Publisher</dt><dd>{props.row.publisher ?? "–"}</dd>
           <dt>Regions</dt><dd>{props.row.regions.join(", ") || "–"}</dd>
           <dt>Files</dt><dd>{props.row.files}</dd>
           <dt>Added</dt><dd>{at(props.row.added)}</dd>
