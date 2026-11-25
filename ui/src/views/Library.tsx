@@ -24,10 +24,11 @@ const savedMode = (): "list" | "grid" => {
     return "list";
   }
 };
-type Key = "favorite" | "system" | "name" | "state" | "seconds" | "cheevos" | "cheevos_players" | "last_played" | "added";
+type Key = "favorite" | "system" | "name" | "state" | "year" | "seconds" | "cheevos" | "cheevos_players" | "last_played" | "added";
 const SORTS: { value: Key; label: string }[] = [
   { value: "system", label: "Sort: system" },
   { value: "name", label: "Sort: name" },
+  { value: "year", label: "Sort: release year" },
   { value: "last_played", label: "Sort: last played" },
   { value: "seconds", label: "Sort: play time" },
   { value: "added", label: "Sort: recently added" },
@@ -39,12 +40,15 @@ const COLS: { key: Key; label: string }[] = [
   { key: "state", label: "State" },
   { key: "system", label: "System" },
   { key: "name", label: "Name" },
+  { key: "year", label: "Year" },
   { key: "seconds", label: "Played" },
   { key: "cheevos", label: "🏆" },
   { key: "cheevos_players", label: "Rank" },
 ];
 
 const cmp = (a: LibraryRow, b: LibraryRow, key: Key) => {
+  // years ascending: oldest first
+  if (key === "year") return (a.year ?? 0) - (b.year ?? 0);
   const x = a[key], y = b[key];
   return typeof x === "string" ? x.localeCompare(y as string) : Number(y) - Number(x);
 };
@@ -59,8 +63,16 @@ export default function Library(props: { onSettings: () => void }) {
   const view = createMemo(() => {
     const { key, asc } = sort();
     const f = [...filter.filtered()];
-    // rows without a system (unknown files) stay at the end in both directions
-    return f.sort((a, b) => +!a.system - +!b.system || (asc ? 1 : -1) * cmp(a, b, key) || a.name.localeCompare(b.name));
+    // rows without a system (unknown files), and without a year when sorting by it, stay at
+    // the end in both directions
+    const noYear = (r: LibraryRow) => +(key === "year" && !r.year);
+    return f.sort(
+      (a, b) =>
+        +!a.system - +!b.system ||
+        noYear(a) - noYear(b) ||
+        (asc ? 1 : -1) * cmp(a, b, key) ||
+        a.name.localeCompare(b.name),
+    );
   });
 
   // by path: rows are replaced when a favorite or play time changes
@@ -188,6 +200,7 @@ export default function Library(props: { onSettings: () => void }) {
                         <Cover system={r().system} name={r().name} class="cover-mini" />
                         <span class="ellipsis">{r().name}</span>
                       </span>
+                      <span class="dim">{r().year ?? ""}</span>
                       <span class="dim">{r().seconds ? formatPlayTime(r().seconds) : ""}</span>
                       <span
                         class="dim"
