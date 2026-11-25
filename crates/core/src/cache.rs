@@ -19,7 +19,10 @@ pub struct Stamp {
 
 impl Stamp {
     pub fn of(path: &Path) -> io::Result<Self> {
-        let m = std::fs::metadata(path)?;
+        Self::from_meta(&std::fs::metadata(path)?)
+    }
+
+    pub fn from_meta(m: &std::fs::Metadata) -> io::Result<Self> {
         let mtime = m
             .modified()?
             .duration_since(UNIX_EPOCH)

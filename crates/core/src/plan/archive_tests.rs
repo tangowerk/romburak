@@ -52,6 +52,7 @@ fn opts(mode: Mode) -> Options {
         hashes: Default::default(),
         misnamed: Default::default(),
         dat_score: Default::default(),
+        content: Default::default(),
         inbox: None,
         ignore: Vec::new(),
     }
@@ -533,10 +534,10 @@ fn repacked_zips_with_equal_members_are_the_same() {
     }
     w.finish().unwrap();
     assert_ne!(fs::read(&a).unwrap(), fs::read(&b).unwrap());
-    assert!(build::same_content(&a, &b));
+    assert!(build::same_content(&a, &b, &Default::default()));
     let c = tmp.path().join("c/1944.zip");
     zip(&c, &["x.bin"]);
-    assert!(!build::same_content(&a, &c));
+    assert!(!build::same_content(&a, &c, &Default::default()));
 }
 
 #[test]
@@ -603,4 +604,25 @@ fn placed_m3u_of_zips_is_repaired_unless_the_core_reads_zips() {
         assert_eq!(text.contains(".fds"), fixed, "{system}: {text}");
         assert_eq!(dir.join("T (Japan) (Disk 1).zip").exists(), !fixed);
     }
+}
+
+#[test]
+fn same_content_trusts_current_cached_hashes_only() {
+    let tmp = TempDir::new().unwrap();
+    let (a, b) = (tmp.path().join("a.rvz"), tmp.path().join("b.rvz"));
+    fs::write(&a, b"aaaa").unwrap();
+    fs::write(&b, b"bbbb").unwrap();
+    let stamp = |p: &Path| crate::Stamp::of(p).unwrap();
+    // equal cached hashes of the current versions: decided without reading the files
+    let mut content = std::collections::HashMap::new();
+    content.insert(a.clone(), (stamp(&a), [1u8; 20]));
+    content.insert(b.clone(), (stamp(&b), [1u8; 20]));
+    assert!(build::same_content(&a, &b, &content));
+    // a stale entry (file changed since hashing) falls back to the byte comparison
+    let old = crate::Stamp {
+        mtime: stamp(&b).mtime - 1,
+        ..stamp(&b)
+    };
+    content.insert(b.clone(), (old, [1u8; 20]));
+    assert!(!build::same_content(&a, &b, &content));
 }

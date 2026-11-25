@@ -24,6 +24,7 @@ fn opts() -> Options {
         hashes: Default::default(),
         misnamed: Default::default(),
         dat_score: Default::default(),
+        content: Default::default(),
         inbox: None,
         ignore: Vec::new(),
     }

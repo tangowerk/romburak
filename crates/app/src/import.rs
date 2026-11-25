@@ -186,6 +186,7 @@ pub async fn plan_import(
             hashes,
             misnamed,
             dat_score: Default::default(),
+            content: Default::default(),
         };
         let p = store.plan(&items, &lib, &mut opts).map_err(err)?;
         store.set_rule_hits(&p.why).map_err(err)?;

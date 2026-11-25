@@ -12,6 +12,12 @@ impl Store {
     /// until no new competitor appears (a replaced library copy can turn a duplicate of it
     /// into a new conflict).
     pub fn plan(&self, items: &[Item], library: &Path, opts: &mut Options) -> Result<Plan> {
+        if opts.content.is_empty() {
+            opts.content = self.content_hashes(library)?;
+            if let Some(inbox) = &opts.inbox {
+                opts.content.extend(self.content_hashes(inbox)?);
+            }
+        }
         let mut p = plan::build(items, library, opts);
         if !opts.rules.auto_conflicts {
             return Ok(p);
@@ -173,6 +179,7 @@ mod tests {
             hashes: Default::default(),
             misnamed: Default::default(),
             dat_score: Default::default(),
+            content: Default::default(),
             inbox: None,
             ignore: Vec::new(),
         };
@@ -219,6 +226,7 @@ mod tests {
             hashes: Default::default(),
             misnamed: Default::default(),
             dat_score: Default::default(),
+            content: Default::default(),
             inbox: None,
             ignore: Vec::new(),
         };
@@ -258,6 +266,7 @@ mod tests {
             hashes: Default::default(),
             misnamed: Default::default(),
             dat_score: Default::default(),
+            content: Default::default(),
             inbox: None,
             ignore: Vec::new(),
         };

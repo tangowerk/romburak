@@ -43,6 +43,7 @@ pub fn run(a: Args) -> Result<()> {
         hashes,
         misnamed,
         dat_score: Default::default(),
+        content: Default::default(),
     };
     let p = store.plan(&items, &library, &mut opts)?;
     store.set_rule_hits(&p.why)?;

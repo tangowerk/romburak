@@ -44,6 +44,7 @@ pub(super) fn opts(mode: Mode) -> Options {
         hashes: Default::default(),
         misnamed: Default::default(),
         dat_score: Default::default(),
+        content: Default::default(),
         inbox: None,
         ignore: Vec::new(),
     }

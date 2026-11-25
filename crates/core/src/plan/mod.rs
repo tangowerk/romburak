@@ -150,6 +150,10 @@ pub struct Options {
     /// Arcade zips in a conflict scored against the target core's DAT: (roms present, roms
     /// needed). Filled by the store on a second planning pass (`auto_conflicts`).
     pub dat_score: HashMap<PathBuf, (u32, u32)>,
+    /// Cached SHA1 of whole files (inbox and library) with the file version it was taken
+    /// from: the duplicate check compares these instead of reading both copies again.
+    /// Filled by the store; files missing here are compared byte by byte.
+    pub content: HashMap<PathBuf, (crate::Stamp, [u8; 20])>,
     /// Inbox root; quarantined files keep their path below it (no clashes on equal names).
     pub inbox: Option<PathBuf>,
     /// Paths the user excluded: nothing at or below them is planned (left as is).

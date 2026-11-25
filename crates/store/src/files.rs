@@ -149,6 +149,20 @@ impl Store {
         Ok(HashCache::new(map))
     }
 
+    /// SHA1 of each whole indexed file below `root` with the file version it was hashed
+    /// from, for the planner's duplicate check (`Options::content`).
+    pub fn content_hashes(&self, root: &Path) -> Result<HashMap<PathBuf, (Stamp, [u8; 20])>> {
+        let cache = self.hash_cache(root)?;
+        Ok(cache
+            .entries
+            .into_iter()
+            .filter_map(|(path, (stamp, roms))| {
+                let r = roms.into_iter().find(|r| r.member.is_none())?;
+                Some((path, (stamp, r.hashes.sha1)))
+            })
+            .collect())
+    }
+
     /// SHA1 of each whole indexed file below `root` (loose files and archives) that another
     /// file there shares, for the library duplicate check.
     pub fn whole_hashes(&self, root: &Path) -> Result<HashMap<PathBuf, [u8; 20]>> {

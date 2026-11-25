@@ -703,7 +703,9 @@ impl Builder<'_> {
             };
             match (op, other) {
                 (Op::Extract { .. } | Op::Write { .. }, _) | (_, None) => false,
-                (_, Some(other)) => op.source().is_some_and(|s| same_content(s, other)),
+                (_, Some(other)) => op
+                    .source()
+                    .is_some_and(|s| same_content(s, other, &self.opts.content)),
             }
         });
         all_same.then(|| g.name.clone())
@@ -873,8 +875,13 @@ fn is_zip(p: &Path) -> bool {
 }
 
 /// Whether two files have the same content: zips with the same members (name, CRC), else
-/// the same bytes (size first, then streamed comparison).
-pub(crate) fn same_content(a: &Path, b: &Path) -> bool {
+/// the same bytes (size first, then the cached SHA1 of both if still current, else a
+/// streamed comparison – slow for big disc images on a network share).
+pub(crate) fn same_content(
+    a: &Path,
+    b: &Path,
+    content: &HashMap<PathBuf, (crate::Stamp, [u8; 20])>,
+) -> bool {
     use std::io::Read;
     if a == b {
         return true;
@@ -899,6 +906,13 @@ pub(crate) fn same_content(a: &Path, b: &Path) -> bool {
     };
     if ma.len() != mb.len() || !ma.is_file() || !mb.is_file() {
         return false;
+    }
+    let cached = |p: &Path, m: &fs::Metadata| {
+        let (stamp, sha1) = content.get(p)?;
+        (crate::Stamp::from_meta(m).ok()? == *stamp).then_some(*sha1)
+    };
+    if let (Some(ha), Some(hb)) = (cached(a, &ma), cached(b, &mb)) {
+        return ha == hb;
     }
     let (Ok(mut fa), Ok(mut fb)) = (fs::File::open(a), fs::File::open(b)) else {
         return false;

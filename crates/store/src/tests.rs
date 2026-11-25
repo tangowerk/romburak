@@ -308,6 +308,7 @@ fn import_end_to_end_with_resolution_journal_and_undo() {
         hashes: Default::default(),
         misnamed: Default::default(),
         dat_score: Default::default(),
+        content: Default::default(),
         inbox: None,
         ignore: Vec::new(),
     };
