@@ -322,3 +322,49 @@ fn name_folder_places_unknown_files_by_name_with_1g1r() {
     let named = name_only(&[lib_item], &rules);
     assert!(matches!(&named[0].ident, Ident::Named(g) if g.system == n64));
 }
+
+#[test]
+fn trashed_duplicate_folder_leaves_its_frontend_metadata_to_one_op() {
+    let tmp = TempDir::new().unwrap();
+    let (inbox, lib) = (tmp.path().join("inbox"), tmp.path().join("lib"));
+    let put = |p: PathBuf| {
+        fs::create_dir_all(p.parent().unwrap()).unwrap();
+        fs::write(&p, p.display().to_string()).unwrap();
+        p
+    };
+    let quake = |p: PathBuf, in_library| Item {
+        files: Files::Single(put(p)),
+        ident: Ident::Known(Game {
+            system: "Quake".into(),
+            name: "Quake".into(),
+            crc: Some(1),
+        }),
+        in_library,
+    };
+    let unknown = |p: PathBuf| Item {
+        files: Files::Single(put(p)),
+        ident: Ident::Unknown,
+        in_library: false,
+    };
+    let items = [
+        quake(lib.join("Quake/tyrquake/pak0.pak"), true),
+        quake(inbox.join("tyrquake/pak0.pak"), false),
+        unknown(inbox.join("tyrquake/id1/pak1.pak")),
+        unknown(inbox.join("tyrquake/gamelist.xml")),
+    ];
+    put(lib.join("Quake/tyrquake/id1/pak1.pak"));
+    let mut o = Options {
+        mode: Mode::Move,
+        inbox: Some(inbox.clone()),
+        ..opts(Rules::default())
+    };
+    o.rules.auto_trash = true;
+    let plan = build(&items, &lib, &o);
+    let sources: Vec<_> = plan.ops.iter().filter_map(Op::source).collect();
+    let unique: std::collections::HashSet<_> = sources.iter().collect();
+    assert_eq!(sources.len(), unique.len(), "{:#?}", plan.ops);
+    let r = crate::plan::execute(&plan.ops);
+    assert!(r.error.is_none(), "{:?}", r.error);
+    assert!(lib.join("_trash/frontend/tyrquake/gamelist.xml").is_file());
+    assert!(lib.join("_trash/tyrquake/pak0.pak").is_file());
+}

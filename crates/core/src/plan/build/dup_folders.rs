@@ -82,7 +82,8 @@ impl Builder<'_> {
         }
     }
 
-    /// Moves the whole folder to `_trash/<folder>/`, keeping its layout (undo restores it).
+    /// Moves the whole folder to `_trash/<folder>/`, keeping its layout (undo restores it);
+    /// its frontend metadata goes to `_trash/frontend/` like everywhere else.
     fn trash_folder(&mut self, root: &Path, fg: &FolderGame<'_>) {
         let Some(name) = root.file_name() else {
             return;
@@ -93,6 +94,8 @@ impl Builder<'_> {
             .into_iter()
             .flatten()
             .filter(|e| e.file_type().is_file())
+            // frontend metadata already has its own op to `_trash/frontend/`
+            .filter(|e| !super::frontend::is_metadata(&self.meta_roots, e.path()))
             .map(|e| {
                 let rel = e.path().strip_prefix(root).unwrap_or(e.path());
                 Op::Move {
