@@ -1,12 +1,17 @@
-//! Thumbnails from thumbnails.libretro.com, cached on disk (misses as `.miss` markers).
+//! Thumbnails from thumbnails.libretro.com (GitHub mirror as fallback), cached on disk
+//! (misses as `.miss` markers, retried after a week).
 use crate::commands::{CmdResult, err, open_store};
-use romburak_core::thumbnail::{BASE_URL, Kind, best_match, cache_path, parse_listing, url};
+use romburak_core::thumbnail::{
+    BASE_URL, Kind, best_match, cache_path, github_url, parse_listing, url,
+};
 use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 use tauri::ipc::Response;
 
 const MAX_BYTES: u64 = 8 << 20;
+/// A miss is retried after this long (the server or the mirror may have gained the image).
+const MISS_TTL_SECS: u64 = 7 * 86400;
 /// Setting: `"0"` disables downloads (cached images are still shown).
 const ONLINE_KEY: &str = "thumbs_online";
 
@@ -39,18 +44,26 @@ fn fetch(system: &str, name: &str, kind: Kind) -> CmdResult<Option<Vec<u8>>> {
         return Ok(Some(b));
     }
     let miss = path.with_extension("miss");
-    if miss.exists() || !online()? {
+    if fresh(&miss, MISS_TTL_SECS) || !online()? {
         return Ok(None);
     }
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(err)?;
     }
-    let bytes = match download(&url(system, name, kind))? {
+    // the libretro server first (with its listing for near names); if it has nothing or
+    // is down, the GitHub mirror under the exact name (an error there is no miss)
+    let server = || -> CmdResult<Option<Vec<u8>>> {
+        if let Some(b) = download(&url(system, name, kind))? {
+            return Ok(Some(b));
+        }
+        match fuzzy_name(system, name, kind, &path)? {
+            Some(other) => download(&url(system, &other, kind)),
+            None => Ok(None),
+        }
+    };
+    let bytes = match server().ok().flatten() {
         Some(b) => b,
-        None => match fuzzy_name(system, name, kind, &path)? {
-            Some(other) => download(&url(system, &other, kind))?.unwrap_or_default(),
-            None => Vec::new(),
-        },
+        None => download(&github_url(system, name, kind))?.unwrap_or_default(),
     };
     if bytes.is_empty() {
         std::fs::write(&miss, b"").map_err(err)?;
@@ -60,6 +73,13 @@ fn fetch(system: &str, name: &str, kind: Kind) -> CmdResult<Option<Vec<u8>>> {
     std::fs::write(&tmp, &bytes).map_err(err)?;
     std::fs::rename(&tmp, &path).map_err(err)?;
     Ok(Some(bytes))
+}
+
+/// Whether `path` exists and was written less than `secs` ago.
+fn fresh(path: &Path, secs: u64) -> bool {
+    std::fs::metadata(path)
+        .and_then(|m| m.modified())
+        .is_ok_and(|t| t.elapsed().is_ok_and(|d| d.as_secs() < secs))
 }
 
 /// Body of `url`, or `None` on 404.
@@ -83,10 +103,7 @@ fn fuzzy_name(system: &str, name: &str, kind: Kind, path: &Path) -> CmdResult<Op
     // One listing download per directory, even with many tiles loading at once.
     let _guard = LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let index = path.with_file_name(".index");
-    let fresh = std::fs::metadata(&index)
-        .and_then(|m| m.modified())
-        .is_ok_and(|t| t.elapsed().is_ok_and(|d| d.as_secs() < 30 * 86400));
-    let names: Vec<String> = if fresh {
+    let names: Vec<String> = if fresh(&index, 30 * 86400) {
         std::fs::read_to_string(&index)
             .map_err(err)?
             .lines()
@@ -97,7 +114,10 @@ fn fuzzy_name(system: &str, name: &str, kind: Kind, path: &Path) -> CmdResult<Op
         let dir_url = &dir_url[..dir_url.rfind('/').unwrap_or(BASE_URL.len()) + 1];
         let html = download(dir_url)?.unwrap_or_default();
         let names = parse_listing(&String::from_utf8_lossy(&html));
-        std::fs::write(&index, names.join("\n")).map_err(err)?;
+        // an empty listing means the server is down or moved, not that it has no images
+        if !names.is_empty() {
+            std::fs::write(&index, names.join("\n")).map_err(err)?;
+        }
         names
     };
     Ok(best_match(name, &names).map(str::to_owned))

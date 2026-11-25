@@ -2,6 +2,8 @@
 use std::path::{Path, PathBuf};
 
 pub const BASE_URL: &str = "https://thumbnails.libretro.com";
+/// Git mirror of the same images (one repo per system), used when the server has none.
+pub const GITHUB_URL: &str = "https://raw.githubusercontent.com/libretro-thumbnails";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
@@ -59,6 +61,22 @@ pub fn url(system: &str, name: &str, kind: Kind) -> String {
     format!(
         "{BASE_URL}/{}/{}/{}",
         encode(system),
+        kind.dir(),
+        encode(&file_name(name))
+    )
+}
+
+/// Download URL of a thumbnail in the libretro-thumbnails GitHub repos: spaces become `_`
+/// in the repo name, and every MAME version shares the `MAME` repo (the server aliases them).
+pub fn github_url(system: &str, name: &str, kind: Kind) -> String {
+    let repo = if system.starts_with("MAME") {
+        "MAME".to_owned()
+    } else {
+        system.replace(' ', "_")
+    };
+    format!(
+        "{GITHUB_URL}/{}/master/{}/{}",
+        encode(&repo),
         kind.dir(),
         encode(&file_name(name))
     )
@@ -161,6 +179,15 @@ mod tests {
                 Kind::Boxart
             ),
             "https://thumbnails.libretro.com/Nintendo%20-%20Game%20Boy/Named_Boxarts/Tetris%20%28World%29%20%28Rev%201%29.png"
+        );
+        assert_eq!(
+            github_url("MAME 2016", "Metal Slug 4 (NGM-2630)", Kind::Boxart),
+            "https://raw.githubusercontent.com/libretro-thumbnails/MAME/master/Named_Boxarts/Metal%20Slug%204%20%28NGM-2630%29.png"
+        );
+        assert!(
+            github_url("Nintendo - Game Boy", "X", Kind::Snap).starts_with(&format!(
+                "{GITHUB_URL}/Nintendo_-_Game_Boy/master/Named_Snaps/"
+            ))
         );
         let p = cache_path(Path::new("/c"), "Sega - X", "Y", Kind::Snap);
         assert_eq!(p, Path::new("/c/Sega - X/Named_Snaps/Y.png"));
