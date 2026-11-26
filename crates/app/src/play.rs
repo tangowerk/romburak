@@ -156,6 +156,7 @@ pub async fn play(
             }
         }
         let key = store.game_key(&rom).map_err(err)?;
+        let toggle = crate::fullscreen_fix::needed(&m);
         let start = std::time::Instant::now();
         let mut child = l
             .command
@@ -163,6 +164,9 @@ pub async fn play(
             .spawn()
             .map_err(|e| format!("starting RetroArch: {e}"))?;
         crate::live::started(&path, child.stdin.take());
+        if toggle {
+            crate::fullscreen_fix::schedule();
+        }
         // Reap the process and count its run time; the UI refreshes on `play://ended`.
         std::thread::spawn(move || {
             let _ = child.wait();

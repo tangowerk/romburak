@@ -6,6 +6,7 @@ mod cheevos_live;
 mod commands;
 mod decide;
 mod exceptions;
+mod fullscreen_fix;
 mod gamify;
 mod import;
 mod library;
